@@ -30,11 +30,13 @@ class Graph {
 		if (this == &other) return *this;
 		V = other.size();
 		int* newW = new int[V*V];
-		std::memcpy(newW, other.raw(), V*V);
+		std::memcpy(newW, other.raw(), V*V*sizeof(int));
 		delete[] adjMatrix;
 		adjMatrix = newW;
 		return *this;
 	}
+
+	// TODO implement move constr. / assignment for performance
 
 	~Graph() {
 		delete [] adjMatrix;
