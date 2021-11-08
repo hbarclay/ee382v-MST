@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include "boruvka_mst_gpu.h"
 
-// Some useful helper functions
+// Some useful macros
 #define MIN(a, b) (a < b ? a : b)
 #define MAX(a, b) (a < b ? b : a)
 #define CEILING_DIV(a, b) ((a + b - 1) / b)
@@ -19,7 +19,7 @@ __global__ static void minReduce(int *src, int *dest, int len) {
     }
 }
 
-// function to find the min of an array
+// function to find the min of an array using reduce
 __device__ static void findMin(int *arr, int len, int *min) {
     if (len > 1) {
         int *arr2;
@@ -104,7 +104,7 @@ __global__ static void contractRootedStars(int *graph, int *parent, int numVerti
     }
 }
 
-// helper function fo sum()
+// helper function for sum()
 template<typename T>
 __global__ void sumReduce(T *src, T *dst, int len) {
     int i = threadIdx.x;
@@ -115,7 +115,7 @@ __global__ void sumReduce(T *src, T *dst, int len) {
     }
 }
 
-// function to find the sum of an array
+// function to find the sum of an array using reduce
 template<typename T>
 __global__ void sum(T *arr, int len, int *result) {
     if (len > 1) {
@@ -156,7 +156,6 @@ __host__ int boruvka(Graph &g) {
 
     int numExistingVertices = numVertices;
     while (numExistingVertices > 1) {
-        // TODO: pass exists to everything
         // get pseudo-tree from the graph
         getPseudoTree<<<1,numVertices>>>(graph, T, parent, numVertices, exists);
 
@@ -175,9 +174,11 @@ __host__ int boruvka(Graph &g) {
 
     // clean up
     cudaFree(graph);
+    cudaFree(T);
     cudaFree(parent);
     cudaFree(exists);
 
+    // return the total weight of the minimum spanning tree
     int result;
     sum<int><<<1,1>>>(T, numVertices, &result);
     return result;
