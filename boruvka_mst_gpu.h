@@ -6,6 +6,4 @@
 
 __host__ int boruvka(Graph &g);
 
-__global__ void boruvka_mst_gpu(int* graph);
-
 #endif
