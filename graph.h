@@ -44,6 +44,7 @@ class Graph {
 
 	void addEdge(int src, int dst, int w) {
 		adjMatrix[src*V+dst] = w;
+		adjMatrix[dst*V+src] = w;
 	}
 
 	void printEdges();
