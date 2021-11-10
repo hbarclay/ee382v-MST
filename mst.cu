@@ -45,20 +45,40 @@ void print_edge(int* graph, int V)
 }
 
 int main() {
+	/*
 	int V=5;
 	int* graph=(int*) malloc(V*V*sizeof(int));
 	
 	empty_graph(graph, V);
+	add_edge(graph,V, 0,1,5);
 	add_edge(graph,V, 0,2,4);
-	add_edge(graph,V, 0,1,2);
+	add_edge(graph,V, 1,2,3);
+	add_edge(graph,V, 1,3,7);
+	add_edge(graph,V, 2,3,9);
+	add_edge(graph,V, 2,4,11);
+	add_edge(graph,V, 3,4,2); //should be 16
 	print_graph(graph, V);
 	print_edge(graph,V);
-	printf("graph size:%d\n",(int)sizeof(graph));
+	*/
 	
-	int* graph_gpu;
-	cudaMalloc((void**)&graph_gpu, V*V*sizeof(int));
-	cudaMemcpy(graph_gpu, graph, V*V*sizeof(int), cudaMemcpyDeviceToHost);
-	prim_mst_gpu<<<1,V>>>(graph_gpu,V); 
-	cudaDeviceSynchronize();
+	int V=8;
+	int* graph=(int*) malloc(V*V*sizeof(int));
+	
+	empty_graph(graph,V);
+	add_edge(graph,V, 0,1,4);
+	add_edge(graph,V, 0,2,6);
+	add_edge(graph,V, 0,3,16);
+	add_edge(graph,V, 1,5,24);
+	add_edge(graph,V, 2,5,23);
+	add_edge(graph,V, 2,4,5);
+	add_edge(graph,V, 2,3,8);
+	add_edge(graph,V, 3,4,10);
+	add_edge(graph,V, 3,7,21);
+	add_edge(graph,V, 4,5,18);
+	add_edge(graph,V, 4,6,11);
+	add_edge(graph,V, 4,7,14);
+	add_edge(graph,V, 5,6,9);
+	add_edge(graph,V, 6,7,7); //should be 50
+
 	return 0;
 }
