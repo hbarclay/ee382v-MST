@@ -131,6 +131,18 @@ void var_init(int* graph, int V)
 		}
 	}
 }
+
+void var_free(){
+	free(d);
+	free(isFixed);
+	free(Q);
+	free(R);
+	free(R_next);
+	free(T);
+	free(parent);
+	free(MWE);
+}
+
 void ExclusivePrefixSum(int* input, int* output, int size)
 {
 	output[0]=0;
@@ -184,6 +196,19 @@ void gpu_var_init(int* graph, int V){
 
 }
 
+void gpu_var_free()
+{
+	cudaFree(graph_gpu);
+	cudaFree(d_gpu);
+	cudaFree(isFixed_gpu);
+	cudaFree(Q_gpu);
+	cudaFree(R_gpu);
+	cudaFree(R_next_gpu);
+	cudaFree(T_gpu);
+	cudaFree(parent_gpu);
+	cudaFree(MWE_gpu);
+}
+
 
 __global__  void global_test1(int* MWE, int V )
 {
@@ -196,30 +221,6 @@ __global__  void global_test1(int* MWE, int V )
 		R_size=7;
 	}
 
-}
-
-void cpu_test(int* graph, int V)
-{
-	var_init( graph, V);
-	gpu_var_init(graph, V);
-	int block_dim = (V<512)?V:512 ;
-	int grid_dim = (V+block_dim-1)/block_dim; //ceiling of V/block_dim
-	printf("%d, %d\n", block_dim, grid_dim);
-	
-	processEdge1GPU<<<grid_dim,block_dim>>>(
-	graph_gpu,
-	V, 
-	d_gpu,
-	isFixed_gpu,
-	R_gpu,
-	R_next_gpu,
-	Q_gpu,
-	T_gpu,
-	parent_gpu,
-	MWE_gpu
-	);
-	
-	cudaDeviceSynchronize();
 }
 
 int prim_mst_hybrid(Graph& g)
@@ -302,10 +303,93 @@ int prim_mst_hybrid(Graph& g)
 		MST_total_weight+=T[i];
 	}
 	printf("\n");
+	var_free();
+	gpu_var_free();
 	return MST_total_weight;
 }
 
+int prim_mst_hybrid_badscan(Graph& g)
+{
+	int* graph = g.raw();
+	int V = g.size();
+	var_init(graph, V);
+	d[0]=0;
+	MinHeap H(V);
+	H.insert(0,d[0]);
+	isFixed[0]=1;
+	gpu_var_init(graph, V);
+	while(!H.empty())
+	{
+		int j = H.extractMin().val;
+		R[R_size]=j;
+		R_size++;
+		
+		if(parent[j] != -1 && !isFixed[j] ){
+			isFixed[j] = true;
+			printf("vertex %d is now fixed due to min cut\n",j );
+			T[j]=graph[j*V+parent[j]];
+		}
 
+		while(R_size!=0){
+			int block_dim = (V*R_size<512)?V*R_size:512 ;
+			int grid_dim = (V*R_size+block_dim-1)/block_dim; //ceiling of V*R_size/block_dim
+		
+			cudaMemcpy(d_gpu, d, V*sizeof(int), cudaMemcpyHostToDevice);
+			cudaMemcpy(isFixed_gpu, isFixed, V*sizeof(int), cudaMemcpyHostToDevice);
+			cudaMemcpy(Q_gpu, Q, V*sizeof(int), cudaMemcpyHostToDevice);
+			cudaMemcpy(R_gpu, R, V*sizeof(int), cudaMemcpyHostToDevice);
+			cudaMemcpy(R_next_gpu, R_next, V*sizeof(int), cudaMemcpyHostToDevice);
+			cudaMemcpy(T_gpu, T, V*sizeof(int), cudaMemcpyHostToDevice);
+
+			processEdge1GPU<<<grid_dim,block_dim>>>(
+					graph_gpu,
+					V, 
+					d_gpu,
+					isFixed_gpu,
+					R_gpu,
+					R_next_gpu,
+					Q_gpu,
+					T_gpu,
+					parent_gpu,
+					MWE_gpu
+					);
+			cudaDeviceSynchronize();
+			
+			cudaMemcpy(parent, parent_gpu, V*sizeof(int), cudaMemcpyDeviceToHost);
+			cudaMemcpy(d, d_gpu, V*sizeof(int), cudaMemcpyDeviceToHost);
+			cudaMemcpy(T, T_gpu, V*sizeof(int), cudaMemcpyDeviceToHost);
+			cudaMemcpy(Q, Q_gpu, V*sizeof(int), cudaMemcpyDeviceToHost);
+			cudaMemcpy(isFixed, isFixed_gpu, V*sizeof(int), cudaMemcpyDeviceToHost);
+			cudaMemcpy(R_next, R_next_gpu, V*sizeof(int), cudaMemcpyDeviceToHost);
+	
+			printf("Q: ");
+			for(int z =0 ; z<V; z++){
+				
+				if( !isFixed[z] && Q[z]==1  )
+				{
+					printf("%d ",z);
+					H.insertOrDecrease(d[z],z);
+				}
+				Q[z]=0;
+			}
+			printf("\n");
+			get_next_R(graph, V);
+		}
+		if(H.empty())
+		printf("heap is empty\n");
+
+
+	}
+	int MST_total_weight=0;
+	printf("T: ");
+	for(int i =0; i < V; i++)
+	{
+		printf("%d ", T[i]);
+		MST_total_weight+=T[i];
+	}
+	printf("\n");
+	return MST_total_weight;
+}
 
 
 int prim_mst_simulation(int* graph, int V)
