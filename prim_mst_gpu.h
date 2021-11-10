@@ -1,5 +1,4 @@
-#include <cuda.h>
-__global__ void prim_mst_gpu(int* graph, int V)
-{
-	printf("Parallel Prim's Algo is called from GPU!\n");
-}
+#include "graph.h"
+
+int prim_mst_hybrid(Graph& g);
+
