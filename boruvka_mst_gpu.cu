@@ -33,9 +33,22 @@ __device__ static void findMin(int *arr, int len, int *min) {
     }
 }
 
+/*
+__device__ static void findMin(int *arr, int len, int *min) {
+    int n = MAX_INT;
+    for (int i = 0; i < len; ++i) {
+        if (arr[i] < n) {
+            n = arr[i];
+        }
+    }
+    *min = n;
+}
+*/
+
 // function to find the index a specified value appears in an array
 __global__ static void findIdx(int *arr, int val, int *idx) {
     int i = threadIdx.x;
+    printf("Searching for %d\n", val);
     if (arr[i] == val) {
         *idx = i;
     }
@@ -47,28 +60,47 @@ __global__ static void getPseudoTree(int *graph, int *T, int *parent, int numVer
 
     if (exists[v]) {
         // find w such that (v, w) is the minimum weight edge of v.
-        int *minEdgeWeight;
-        int *minEdgeVertex;
-        cudaMalloc((void **)&minEdgeWeight, sizeof(int));
-        cudaMalloc((void **)&minEdgeVertex, sizeof(int));
+        int minEdgeWeight;
+        int minEdgeVertex;
 
         int *adjacencyList = graph + v * numVertices;
+
+        // for debugging
+        minEdgeWeight = adjacencyList[0];
+        minEdgeVertex = 0;
+
+        for (int i = 1; i < numVertices; ++i) {
+            if (adjacencyList[i] < minEdgeWeight) {
+                minEdgeVertex = i;
+                minEdgeWeight = adjacencyList[i];
+            }
+        }
         
-        findMin(adjacencyList, numVertices, minEdgeWeight);
-        findIdx<<<1,numVertices>>>(adjacencyList, *minEdgeWeight, minEdgeVertex);
+        /*
+        findMin(&(graph[v * numVertices]), numVertices, &minEdgeWeight);
+        findIdx<<<1,numVertices>>>(adjacencyList, minEdgeWeight, &minEdgeVertex);
+        */
+
+        printf("parent of %d is %d with weight %d\n", v, minEdgeVertex, minEdgeWeight);
 
         // update the parent
-        parent[v] = *minEdgeVertex;
+        parent[v] = minEdgeVertex;
 
         // Update the minimum spanning tree. Since there are two copies of each edge in the matrix, only update the earlier one
-        T[MIN(v, *minEdgeVertex) * numVertices + MAX(v, *minEdgeVertex)] = *minEdgeWeight;    // T := T U {(v, w)}
+        T[MIN(v, minEdgeVertex) * numVertices + MAX(v, minEdgeVertex)] = minEdgeWeight;    // T := T U {(v, w)}
+
+        // simple version
+        //T[v * numVertices + minEdgeVertex] = minEdgeWeight;
+        //T[minEdgeVertex * numVertices + v] = minEdgeWeight;
     }
 }
 
 // function to convert pseudo trees into rooted trees (second for loop in handout)
 __global__ static void makeRootedTrees(int *parent, bool *exists) {
     int v = threadIdx.x;
+    //printf("making rooted tree at %d\n", v);
     if ((exists[v]) && (parent[parent[v]] == v) && (v < parent[v])) {
+        printf("updating parent for %d\n", v);
         parent[v] = v;
     }
 }
@@ -92,15 +124,38 @@ __global__ static void removeEdges(int *graph, int v, int numVertices) {
     graph[v * numVertices + u] = MAX_INT;
 }
 
-// function to contract all rooted stars into single vertices
+__global__ static void transferEdgesToParent(int *graph, int *parent, int numVertices, bool *exists) {
+    int v = threadIdx.x;
+
+    // remove vertex if it is not the root of a rooted star
+    if ((exists[v]) && (parent[v] != v)) {
+        printf("transferring edges from vertex %d\n", v);
+        // TODO: make the new edges point to the parent, instead of a node that might get deleted
+        for (int i = 0; i < numVertices; ++i) {
+            if ((graph[v * numVertices + i] != MAX_INT) && (i != parent[v])) {
+                if (graph[parent[v] * numVertices + i] > graph[v * numVertices + i]) {
+                    graph[parent[v] * numVertices + i] = graph[v * numVertices + i];
+                    graph[i * numVertices + parent[v]] = graph[i * numVertices + v];
+                }
+            }
+        }
+    }
+}
+
+// function to contract all rooted stars
 __global__ static void contractRootedStars(int *graph, int *parent, int numVertices, bool *exists) {
     int v = threadIdx.x;
 
     // remove vertex if it is not the root of a rooted star
     if ((exists[v]) && (parent[v] != v)) {
+        printf("contracting vertex %d\n", v);
         exists[v] = false;
         // remove edges that connect to this vertex
-        removeEdges<<<1,numVertices>>>(graph, v, numVertices);
+        //removeEdges<<<1,numVertices>>>(graph, v, numVertices);
+        for (int i = 0; i < numVertices; ++i) {
+            graph[v * numVertices + i] = MAX_INT;
+            graph[i * numVertices + v] = MAX_INT;
+        }
     }
 }
 
@@ -116,6 +171,7 @@ __global__ void sumReduce(T *src, T *dst, int len) {
 }
 
 // function to find the sum of an array using reduce
+/*
 template<typename T>
 __global__ void sum(T *arr, int len, int *result) {
     if (len > 1) {
@@ -129,15 +185,37 @@ __global__ void sum(T *arr, int len, int *result) {
         *result = arr[0];
     }
 }
+*/
+
+
+__global__ void sumByte(uint8_t *arr, int len, int *result) {
+    int n = 0;
+    for (int i = 0; i < len; ++i) {
+        n += arr[i];
+        //printf("found %d\n", arr[i]);
+    }
+    //printf("sum: %d\n", n);
+    *result = n;
+}
+
+__global__ void sumInt(int *arr, int len, int *result) {
+    int n = 0;
+    for (int i = 0; i < len; ++i) {
+        n += arr[i];
+    }
+    *result = n;
+}
 
 // main function for Boruvka's algorithm
-__host__ int boruvka(Graph &g) {
+int boruvka(Graph &g) {
     // copy graph to GPU
     int *graph;
     int numVertices = g.size();
     size_t graphSize = numVertices * numVertices * sizeof(int);
     cudaMalloc((void **) &graph, graphSize);
     cudaMemcpy(graph, g.raw(), graphSize, cudaMemcpyHostToDevice);
+
+    printf("copied graph to GPU\n");
 
     // set up array to hold mst
     int *T;
@@ -152,10 +230,18 @@ __host__ int boruvka(Graph &g) {
     // set up device vector to mark vertices as existant
     bool *exists;
     cudaMalloc((void **) &exists, g.size() * sizeof(bool));
-    cudaMemset((void *) exists, 0, g.size() * sizeof(bool));
+    cudaMemset((void *) exists, true, g.size() * sizeof(bool));
+
+    printf("Initialized global arrays\n");
+
+    // for debugging
+    void *buffer = malloc(graphSize);
 
     int numExistingVertices = numVertices;
+    int *d_numExistingVertices;
+    cudaMalloc((void **)&d_numExistingVertices, sizeof(int));
     while (numExistingVertices > 1) {
+        printf("%d vertices remaining\n", numExistingVertices);
         // get pseudo-tree from the graph
         getPseudoTree<<<1,numVertices>>>(graph, T, parent, numVertices, exists);
 
@@ -166,20 +252,29 @@ __host__ int boruvka(Graph &g) {
         makeRootedStars<<<1,numVertices>>>(parent, exists);
 
         // contract all rooted stars into a single vertex
+        transferEdgesToParent<<<1,numVertices>>>(graph, parent, numVertices, exists);
         contractRootedStars<<<1,numVertices>>>(graph, parent, numVertices, exists);
 
         // update number of existing vertices
-        sum<uint8_t><<<1,1>>>((uint8_t *)exists, numVertices, &numExistingVertices);
+        cudaMemcpy(d_numExistingVertices, &numExistingVertices, sizeof(int), cudaMemcpyHostToDevice);
+        sumByte<<<1,1>>>((uint8_t *)exists, numVertices, d_numExistingVertices);
+        cudaMemcpy(&numExistingVertices, d_numExistingVertices, sizeof(int), cudaMemcpyDeviceToHost);
     }
+
+    // return the total weight of the minimum spanning tree
+    int result;
+    int *d_result;
+    cudaMalloc((void **)&d_result, sizeof(int));
+    sumInt<<<1,1>>>(T, numVertices * numVertices, d_result);
+    cudaMemcpy(&result, d_result, sizeof(int), cudaMemcpyDeviceToHost);
 
     // clean up
     cudaFree(graph);
     cudaFree(T);
     cudaFree(parent);
     cudaFree(exists);
+    cudaFree(d_numExistingVertices);
+    cudaFree(d_result);
 
-    // return the total weight of the minimum spanning tree
-    int result;
-    sum<int><<<1,1>>>(T, numVertices, &result);
     return result;
 }

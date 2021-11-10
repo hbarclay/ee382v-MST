@@ -4,6 +4,6 @@
 #include <cuda.h>
 #include "graph.h"
 
-__host__ int boruvka(Graph &g);
+int boruvka(Graph &g);
 
 #endif

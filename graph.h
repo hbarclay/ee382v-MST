@@ -3,6 +3,7 @@
 
 #include <cstring>
 #include <limits>
+#include <stdio.h>
 
 #define MAX_WEIGHT 10
 #define INF std::numeric_limits<int>::max()
@@ -16,7 +17,7 @@ class Graph {
 		for (int i = 0; i < V*V; i++) {
 			adjMatrix[i] = INF;
 		}
-		generateGraph();
+		//generateGraph();
 	}
 
 	Graph(const int* w, const int _V) : V(_V){
