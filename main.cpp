@@ -1,4 +1,4 @@
-
+#include <stdio.h>
 #include "prim_mst_gpu.h"
 #include <iostream>
 
@@ -9,6 +9,6 @@
 
 int main() {
 	Graph g(V, E);
-	prim_mst_hybrid(g);
 	g.printEdges();
+	printf("prim mst hybrid: %d\n", prim_mst_hybrid(g));
 }
