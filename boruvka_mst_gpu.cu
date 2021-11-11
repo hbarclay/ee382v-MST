@@ -130,12 +130,12 @@ __global__ static void transferEdgesToParent(int *graph, int *parent, int numVer
     // remove vertex if it is not the root of a rooted star
     if ((exists[v]) && (parent[v] != v)) {
         printf("transferring edges from vertex %d\n", v);
-        // TODO: make the new edges point to the parent, instead of a node that might get deleted
+        // TODO: parallelize this
         for (int i = 0; i < numVertices; ++i) {
             if ((graph[v * numVertices + i] != MAX_INT) && (i != parent[v])) {
-                if (graph[parent[v] * numVertices + i] > graph[v * numVertices + i]) {
-                    graph[parent[v] * numVertices + i] = graph[v * numVertices + i];
-                    graph[i * numVertices + parent[v]] = graph[i * numVertices + v];
+                if (graph[parent[v] * numVertices + parent[i]] > graph[v * numVertices + i]) {
+                    graph[parent[v] * numVertices + parent[i]] = graph[v * numVertices + i];
+                    graph[parent[i] * numVertices + parent[v]] = graph[i * numVertices + v];
                 }
             }
         }
