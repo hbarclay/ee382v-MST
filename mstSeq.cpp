@@ -5,7 +5,23 @@
 #include "mstSeq.h"
 #include "graph.h"
 
-int* primSeq(int* adjMap, int V) {
+int getMin(const std::vector<int>& d, const auto& fixed) {
+	int min = INF;
+	int min_v = -1;
+
+	for (int v = 0; v < d.size(); v++) {
+		if (!fixed[v] && d[v] < min) {
+			min = d[v];
+			min_v = v;
+		}
+	}
+
+	return min_v;
+}
+
+// very simple prim's implementation for correctness checks
+// this is O(V^2) ! Could be O(E log V) with adj list and min heap
+int primSeq(int* adjMap, int V) {
 	std::vector<int> d(V, INF);
 	std::vector<int> parent(V, -1);
 	std::vector<bool> fixed(V, false);
@@ -13,46 +29,28 @@ int* primSeq(int* adjMap, int V) {
 
 	d[0] = 0;
 
-	while (T.size() < V - 1) {
-		int v = -1;
-		int min = INF;
-		for (int i = 0; i < V; i++) {
-			if (!fixed[i]) {
-				if (d[i] < min) {
-					v = i;
-					min = d[i];
-				}
-			}
-		}
+	for (int i = 0; i < V - 1; i++) {
+		int u = getMin(d, fixed);
 
-		assert(v != -1);
+		fixed[u] = true;
 
-		if (d[v] == INF)
-			return nullptr;
-
-		if (parent[v] != -1)
-			T.push_back(std::make_pair(v, parent[v]));
-
-		fixed[v] = true;
-
-		// Undirected graph -- look at top half of adj matrix
-		for (int i = 0; i < V; i++) {
-			for (int j = i + 1; j < V; j++) {
-				if (adjMap[i*V+j] < d[j]) {
-					d[j] = adjMap[i*V+j];
-					parent[j] = i;
-				}
+		for (int v = 0; v < V; v++) {
+			if (adjMap[u*V+v] && !fixed[v] && adjMap[u*V+v] < d[v]) {
+				parent[v] = u;
+				d[v] = adjMap[u*V+v];
 			}
 		}
 	}
 
-	std::cout << "DONE" << std::endl;
-
-	for (auto a : T) {
-		std::cout << a.first << " " << a.second << " " << std::endl;
+	int total_weight = 0;
+	for (int i = 1; i < V; i++) {
+		//std::cout << adjMap[parent[i]*V+i] << " " << parent[i] << " " << i << std::endl;
+		total_weight += adjMap[parent[i]*V+i];
+		T.push_back(std::make_pair(parent[i], i));
 	}
 
-	return nullptr;
-	
+	return total_weight;
 }
+
+// TODO Wrapper function to report time, borvukas algorithm, optimized versions of both
 

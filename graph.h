@@ -4,7 +4,7 @@
 #include <cstring>
 #include <limits>
 
-#define MAX_WEIGHT 100
+#define MAX_WEIGHT 99
 #define INF std::numeric_limits<int>::max()
 
 class Graph {

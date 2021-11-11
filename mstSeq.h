@@ -2,7 +2,9 @@
 
 #define __MST_SEQ_H
 
-int* primSeq(int* adjMap, int V);
+#include <vector>
+
+int primSeq(int* adjMap, int V);
 
 
 #endif //  __MST_SEQ_H
