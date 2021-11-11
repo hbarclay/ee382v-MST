@@ -5,7 +5,6 @@
 #include "graph.h"
 
 
-
 void Graph::printEdges() {
 	std::cout << "list of edges: \n";
 	for (int i = 0; i < V; i++) {
@@ -28,11 +27,37 @@ void Graph::printVertices() {
 	}		
 }
 
-void Graph::generateGraph() {
-	srand(time(NULL));
+void Graph::generateConnectedGraph(int _E) {
+	if(_E<V-1)
+	{
+		printf("number of edge is too low to create a fully connected graph!\n");
+	}
+	static int seed=0; //use static variable here because we want to have consistent result	between execution
+	srand(seed);
+	seed+=34;// modify seed becuase if we want to generate 5 different graph of same size&density to test derivation, we don't want them to be the same.
 
-	int i = 0;
-	while (i < E) {
+	for(int i =0 ; i< V ; i++ )//first make sure connectivity
+	{	
+		int already_connected=0;
+
+		for ( int j =0 ; j<V; j++ )
+		{
+			if(j!=i && adjMatrix[i*V+j]!=INF )
+				already_connected=1;
+		}
+		
+		if(!already_connected)
+		{
+			int target=rand()%V;
+			while( target == i )
+				target=rand()%V;
+			int w = rand() % MAX_WEIGHT + 1;
+			addEdge(i, target,w);
+		}
+	
+	}
+	//then add more until #edges is  _E
+	while (E < _E) {
 		int v1 = rand() % V;
 		int v2 = rand() % V;
 
@@ -41,10 +66,13 @@ void Graph::generateGraph() {
 
 
 		int w = rand() % MAX_WEIGHT + 1;
+		addEdge(v1,v2,w);
 
-		adjMatrix[v1*V+v2] = w;
-		adjMatrix[v2*V+v1] = w;
-
-		i++;
 	}
+}
+
+void Graph::generateConnectedGraphWithDensity(int density){
+	int _E = density*V*(V-1)/2/100;
+	printf("generating a graph with %d vertices %d%% density(which is %d edges)...\n",V,density, _E );
+	generateConnectedGraph(_E);
 }
