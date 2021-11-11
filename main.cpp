@@ -1,10 +1,11 @@
 #include <stdio.h>
-#include "prim_mst_gpu.h"
 #include <iostream>
 #include <cassert>
 
 #include "graph.h"
 #include "mstSeq.h"
+#include "boruvka_mst_gpu.h"
+#include "prim_mst_gpu.h"
 
 #define FIXED_DENSITY 80
 #define FIXED_DENSITY_COUNT 5
@@ -42,6 +43,9 @@ int main() {
 	g8.addEdge(4,7,14);
 	g8.addEdge(5,6,9);
 	g8.addEdge(6,7,7); //should be 50
+
+	// test
+	// std::cout << "boruvka: " << boruvka(g8) << std::endl;
 
 	int time;
 	for (int i = 2; i < 20; i++) {

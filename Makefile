@@ -7,17 +7,18 @@ OBJ_DIR := $(BUILD)/objects
 SRC := $(wildcard *.cpp)
 CU_SRC := $(wildcard *.cu)
 OBJS := $(SRC:%.cpp=$(OBJ_DIR)/%.o) 
-CU_OBJS := $(CU_SRC:%.cu=$(OBJ_DIR)/%.o)
 DEPS := $(OBJS:.o=.d)
 
 # NVCC 
 CUDA_ROOT := /usr/local/cuda-9.1
 
 NVCC := nvcc
-NVCC_FLAGS :=
+NVCC_FLAGS := -arch=sm_35 
 CUDA_INC_DIR := -I$(CUDA_ROOT)/include
 CUDA_LIB_DIR := -L$(CUDA_ROOT)/lib64
-CUDA_LIBS := -lcudart
+CUDA_LIBS := -lcudart -lcudadevrt
+CU_OBJS := $(CU_SRC:%.cu=$(OBJ_DIR)/%.o)
+CU_LINK_OBJS := $(OBJ_DIR)/cu_link.o
 
 EXE := mst
 
@@ -29,27 +30,14 @@ $(OBJ_DIR)/%.o: %.cpp Makefile
 
 $(OBJ_DIR)/%.o : %.cu
 	@mkdir -p $(@D)
-	$(NVCC) $(NVCC_FLAGS) -c $< -o $@ $(NVCC_LIBS)
+	$(NVCC) $(NVCC_FLAGS) -rdc=true -dc $^ -o $@ $(NVCC_LIBS)
 
-seq: $(OBJS)
+$(OBJ_DIR)/cu_link.o: $(CU_OBJS)
 	@mkdir -p $(@D)
-	$(CXX) $(CXXFLAGS) -o seq $^ $(LDFLAGS)
+	$(NVCC) $(NVCC_FLAGS) -dlink -o $@ $(CU_OBJS) $(NVCC_LIBS)
 
-$(EXE): $(CU_OBJS) $(OBJS)
-	$(CXX) $(CXXFLAGS) $(OBJS) $(CU_OBJS) -o $@ $(CUDA_INC_DIR) $(CUDA_LIB_DIR) $(CUDA_LIBS)
-
-executable: mst.cu prim_mst_gpu.cu
-	nvcc -o executable mst.cu prim_mst_gpu.cu
-
-boruvka: boruvka_mst_gpu.o graph.o boruvka.cpp graph.h
-	nvcc -g -arch=compute_35 -o boruvka boruvka.cpp boruvka_mst_gpu.o graph.o
-
-graph.o: graph.cpp graph.h
-	nvcc -g -c -arch=compute_35 -rdc=true graph.cpp
-
-# temporary for checking compile errors
-boruvka_mst_gpu.o: boruvka_mst_gpu.cu graph.h
-	nvcc -g -c -arch=compute_35 -rdc=true boruvka_mst_gpu.cu
+$(EXE): $(CU_OBJS) $(OBJS) $(CU_LINK_OBJS)
+	$(CXX) $(CXXFLAGS) $(OBJS) $(CU_OBJS) $(CU_LINK_OBJS) -o $@ $(CUDA_INC_DIR) $(CUDA_LIB_DIR) $(CUDA_LIBS)
 
 -include $(DEPS)
 
@@ -59,3 +47,4 @@ clean:
 	-@rm -rvf $(OBJ_DIR)/*
 	-@rm -rvf executable
 	-@rm -rvf seq
+	-@rm -rvf $(EXE)
