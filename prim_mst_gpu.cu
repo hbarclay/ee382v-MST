@@ -53,18 +53,25 @@ int* MWE
 	{
 		if (graph[R[z]*V+k]!= INT_MAX && isFixed[k]==0 && R[z]!=k )
 		{
-			//printf("checking edge R[z]:%d-k:%d\n", R[z], k);
+			
 			if(graph[R[z]*V+k] == MWE[R[z]] || graph[R[z]*V+k] == MWE[k] )
 			{
 				isFixed[k]=true;
 				T[k]=graph[R[z]*V+k];
 				R_next[k]=1;
-				//printf("vertex %d is now fixed due to MWE\n", k);
+				//printf("vertex %d (%d-%d,%d) is now fixed due to MWE\n",k,k,R[z],graph[R[z]*V+k]) ;
+				//printf("add %d-%d,%d to R\n", R[z], k, graph[R[z]*V+k]);
 			}
 			else if (d[k]> graph[R[z]*V+k])
 			{
-				d[k] = graph[R[z]*V+k];
-				parent[k] = R[z];
+				//printf("add %d-%d,%d to Q (%d<%d)\n", R[z], k, graph[R[z]*V+k], graph[R[z]*V+k],d[k] );
+				//d[k] = graph[R[z]*V+k]; //bad code: atomicity will be violated
+				//parent[k] = R[z]; //bad code: atomicity will be violated
+
+				int old = atomicMin(&d[k], graph[R[z]*V+k]);
+				cudaDeviceSynchronize();//wait for the final d[k] be computed
+				if(d[k]==graph[R[z]*V+k]) // if different, means someone else has lower d, do nothing
+					parent[k]=R[z];	
 				Q[k]=1;
 			}
 		}	
@@ -85,7 +92,7 @@ void processEdge1(int*graph, int V)
 					isFixed[k]=true;
 					T[k]=graph[R[z]*V+k];
 					R_next[k]=1;
-					//printf("vertex %d is now fixed due to MWE\n", k);
+					//printf("vertex %d (%d-%d,%d) is now fixed due to MWE\n",k,k,R[z],graph[R[z]*V+k]) ;
 				}
 				else if (d[k]> graph[R[z]*V+k])
 				{
@@ -228,13 +235,15 @@ int prim_mst_hybrid(Graph& g, int& time)
 	gettimeofday(&start, NULL);
 	while(!H.empty())
 	{
-		int j = H.extractMin().val;
+		MinHeapNode min = H.extractMin();
+		int j = min.val;
+		int j_weight=min.key;
 		R[R_size]=j;
 		R_size++;
 		
 		if(parent[j] != -1 && !isFixed[j] ){
 			isFixed[j] = true;
-			//printf("vertex %d is now fixed due to min cut\n",j );
+			//printf("vertex %d (%d-%d,%d) is now fixed due to min cut\n",j,j,parent[j],j_weight );
 			T[j]=graph[j*V+parent[j]];
 		}
 
@@ -275,7 +284,7 @@ int prim_mst_hybrid(Graph& g, int& time)
 				
 				if( !isFixed[z] && Q[z]==1  )
 				{
-					//printf("%d ",z);
+					//printf("%d(%d) ",z,d[z] );
 					H.insertOrDecrease(d[z],z);
 				}
 				Q[z]=0;
@@ -292,10 +301,10 @@ int prim_mst_hybrid(Graph& g, int& time)
 	time=(int)(endms-startms);
 
 	int MST_total_weight=0;
-	//printf("T: ");
+	//printf("prim_gpu T: ");
 	for(int i =0; i < V; i++)
 	{
-	//	printf("%d ", T[i]);
+		//printf("%d ", T[i]);
 		MST_total_weight+=T[i];
 	}
 	//printf("\n");
