@@ -5,6 +5,7 @@
 #include "min_heap.h"
 #include <cuda_runtime_api.h>
 #include "prim_mst_gpu.h"
+#include <sys/time.h>
 
 int* graph_gpu;
 int* d_gpu;
@@ -52,13 +53,13 @@ int* MWE
 	{
 		if (graph[R[z]*V+k]!= INT_MAX && isFixed[k]==0 && R[z]!=k )
 		{
-			printf("checking edge R[z]:%d-k:%d\n", R[z], k);
+			//printf("checking edge R[z]:%d-k:%d\n", R[z], k);
 			if(graph[R[z]*V+k] == MWE[R[z]] || graph[R[z]*V+k] == MWE[k] )
 			{
 				isFixed[k]=true;
 				T[k]=graph[R[z]*V+k];
 				R_next[k]=1;
-				printf("vertex %d is now fixed due to MWE\n", k);
+				//printf("vertex %d is now fixed due to MWE\n", k);
 			}
 			else if (d[k]> graph[R[z]*V+k])
 			{
@@ -78,13 +79,13 @@ void processEdge1(int*graph, int V)
 		{
 			if (graph[R[z]*V+k]!= INT_MAX && isFixed[k]==0 && R[z]!=k )
 			{
-				printf("checking edge R[z]:%d-k:%d\n", R[z], k);
+				//printf("checking edge R[z]:%d-k:%d\n", R[z], k);
 				if(graph[R[z]*V+k] == MWE[R[z]] || graph[R[z]*V+k] == MWE[k] )
 				{
 					isFixed[k]=true;
 					T[k]=graph[R[z]*V+k];
 					R_next[k]=1;
-					printf("vertex %d is now fixed due to MWE\n", k);
+					//printf("vertex %d is now fixed due to MWE\n", k);
 				}
 				else if (d[k]> graph[R[z]*V+k])
 				{
@@ -161,12 +162,12 @@ void get_next_R(int* graph, int V)
 			R[temp[i]]=i;
 	}
 	
-	printf("R: ");
+	//printf("R: ");
 	for(int i =0; i <R_size; i++)
 	{
-		printf("%d ", R[i]);
+		//printf("%d ", R[i]);
 	}
-	printf("\n");
+	//printf("\n");
 	
 	//zero out the R_next
 	for(int i =0; i<V;i++)
@@ -210,21 +211,11 @@ void gpu_var_free()
 }
 
 
-__global__  void global_test1(int* MWE, int V )
+int prim_mst_hybrid(Graph& g, int& time)
 {
-	//printf("hello from gpu\n");
-	int global_idx=blockDim.x * blockIdx.x + threadIdx.x;
-	printf("id%d \n", global_idx);
-	if(global_idx==0)
-	{
-		printf("V: %d\n",V);
-		R_size=7;
-	}
+	struct timeval start;
+	struct timeval end;
 
-}
-
-int prim_mst_hybrid(Graph& g)
-{
 	int* graph = g.raw();
 	int V = g.size();
 	var_init(graph, V);
@@ -233,6 +224,8 @@ int prim_mst_hybrid(Graph& g)
 	H.insert(0,d[0]);
 	isFixed[0]=1;
 	gpu_var_init(graph, V);
+	
+	gettimeofday(&start, NULL);
 	while(!H.empty())
 	{
 		int j = H.extractMin().val;
@@ -241,7 +234,7 @@ int prim_mst_hybrid(Graph& g)
 		
 		if(parent[j] != -1 && !isFixed[j] ){
 			isFixed[j] = true;
-			printf("vertex %d is now fixed due to min cut\n",j );
+			//printf("vertex %d is now fixed due to min cut\n",j );
 			T[j]=graph[j*V+parent[j]];
 		}
 
@@ -277,119 +270,40 @@ int prim_mst_hybrid(Graph& g)
 			cudaMemcpy(isFixed, isFixed_gpu, V*sizeof(int), cudaMemcpyDeviceToHost);
 			cudaMemcpy(R_next, R_next_gpu, V*sizeof(int), cudaMemcpyDeviceToHost);
 	
-			printf("Q: ");
+			//printf("Q: ");
 			for(int z =0 ; z<V; z++){
 				
 				if( !isFixed[z] && Q[z]==1  )
 				{
-					printf("%d ",z);
+					//printf("%d ",z);
 					H.insertOrDecrease(d[z],z);
 				}
 				Q[z]=0;
 			}
-			printf("\n");
+			//printf("\n");
 			get_next_R(graph, V);
 		}
-		if(H.empty())
-		printf("heap is empty\n");
-
 
 	}
+	gettimeofday(&end,NULL);
+	unsigned long long startms=(unsigned long long)(start.tv_sec) * 1000 + (unsigned long long)(start.tv_usec) / 1000;
+	unsigned long long endms=(unsigned long long)(end.tv_sec) * 1000 + (unsigned long long)(end.tv_usec) / 1000;
+	
+	time=(int)(endms-startms);
+
 	int MST_total_weight=0;
-	printf("T: ");
+	//printf("T: ");
 	for(int i =0; i < V; i++)
 	{
-		printf("%d ", T[i]);
+	//	printf("%d ", T[i]);
 		MST_total_weight+=T[i];
 	}
-	printf("\n");
+	//printf("\n");
 	var_free();
 	gpu_var_free();
 	return MST_total_weight;
 }
 
-int prim_mst_hybrid_badscan(Graph& g)
-{
-	int* graph = g.raw();
-	int V = g.size();
-	var_init(graph, V);
-	d[0]=0;
-	MinHeap H(V);
-	H.insert(0,d[0]);
-	isFixed[0]=1;
-	gpu_var_init(graph, V);
-	while(!H.empty())
-	{
-		int j = H.extractMin().val;
-		R[R_size]=j;
-		R_size++;
-		
-		if(parent[j] != -1 && !isFixed[j] ){
-			isFixed[j] = true;
-			printf("vertex %d is now fixed due to min cut\n",j );
-			T[j]=graph[j*V+parent[j]];
-		}
-
-		while(R_size!=0){
-			int block_dim = (V*R_size<512)?V*R_size:512 ;
-			int grid_dim = (V*R_size+block_dim-1)/block_dim; //ceiling of V*R_size/block_dim
-		
-			cudaMemcpy(d_gpu, d, V*sizeof(int), cudaMemcpyHostToDevice);
-			cudaMemcpy(isFixed_gpu, isFixed, V*sizeof(int), cudaMemcpyHostToDevice);
-			cudaMemcpy(Q_gpu, Q, V*sizeof(int), cudaMemcpyHostToDevice);
-			cudaMemcpy(R_gpu, R, V*sizeof(int), cudaMemcpyHostToDevice);
-			cudaMemcpy(R_next_gpu, R_next, V*sizeof(int), cudaMemcpyHostToDevice);
-			cudaMemcpy(T_gpu, T, V*sizeof(int), cudaMemcpyHostToDevice);
-
-			processEdge1GPU<<<grid_dim,block_dim>>>(
-					graph_gpu,
-					V, 
-					d_gpu,
-					isFixed_gpu,
-					R_gpu,
-					R_next_gpu,
-					Q_gpu,
-					T_gpu,
-					parent_gpu,
-					MWE_gpu
-					);
-			cudaDeviceSynchronize();
-			
-			cudaMemcpy(parent, parent_gpu, V*sizeof(int), cudaMemcpyDeviceToHost);
-			cudaMemcpy(d, d_gpu, V*sizeof(int), cudaMemcpyDeviceToHost);
-			cudaMemcpy(T, T_gpu, V*sizeof(int), cudaMemcpyDeviceToHost);
-			cudaMemcpy(Q, Q_gpu, V*sizeof(int), cudaMemcpyDeviceToHost);
-			cudaMemcpy(isFixed, isFixed_gpu, V*sizeof(int), cudaMemcpyDeviceToHost);
-			cudaMemcpy(R_next, R_next_gpu, V*sizeof(int), cudaMemcpyDeviceToHost);
-	
-			printf("Q: ");
-			for(int z =0 ; z<V; z++){
-				
-				if( !isFixed[z] && Q[z]==1  )
-				{
-					printf("%d ",z);
-					H.insertOrDecrease(d[z],z);
-				}
-				Q[z]=0;
-			}
-			printf("\n");
-			get_next_R(graph, V);
-		}
-		if(H.empty())
-		printf("heap is empty\n");
-
-
-	}
-	int MST_total_weight=0;
-	printf("T: ");
-	for(int i =0; i < V; i++)
-	{
-		printf("%d ", T[i]);
-		MST_total_weight+=T[i];
-	}
-	printf("\n");
-	return MST_total_weight;
-}
 
 
 int prim_mst_simulation(int* graph, int V)
@@ -414,23 +328,19 @@ int prim_mst_simulation(int* graph, int V)
 		while(R_size!=0){
 			processEdge1( graph, V);
 			
-			printf("Q: ");
+			//printf("Q: ");
 			for(int z =0 ; z<V; z++){
 				
 				if( !isFixed[z] && Q[z]==1  )
 				{
-					printf("%d ",z);
+					//printf("%d ",z);
 					H.insertOrDecrease(d[z],z);
 				}
 				Q[z]=0;
 			}
-			printf("\n");
+			//printf("\n");
 			get_next_R(graph, V);
 		}
-		if(H.empty())
-		printf("heap is empty\n");
-
-
 	}
 	int MST_total_weight=0;
 	for(int i =0; i < V; i++)

@@ -73,6 +73,6 @@ void Graph::generateConnectedGraph(int _E) {
 
 void Graph::generateConnectedGraphWithDensity(int density){
 	int _E = density*V*(V-1)/2/100;
-	printf("generating a graph with %d%% density(which is %d edges)...\n",density, _E );
+	printf("generating a graph with %d vertices %d%% density(which is %d edges)...\n",V,density, _E );
 	generateConnectedGraph(_E);
 }
