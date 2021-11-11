@@ -3,6 +3,7 @@
 
 #include <cstring>
 #include <limits>
+#include <stdio.h>
 
 #define MAX_WEIGHT 99
 #define INF std::numeric_limits<int>::max()
