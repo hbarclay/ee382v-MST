@@ -109,6 +109,9 @@ __global__ static void getPseudoTree(int *graph, int *T, int *parent, int numVer
 
         int *adjacencyList = graph + v * numVertices;
 
+        // solve weird bug with self-loops
+        adjacencyList[v] = MAX_INT;
+
         // for debugging
         *minEdgeWeight = adjacencyList[0];
         *minEdgeVertex = 0;
@@ -124,6 +127,7 @@ __global__ static void getPseudoTree(int *graph, int *T, int *parent, int numVer
 
         // Update the minimum spanning tree. Since there are two copies of each edge in the matrix, only update the earlier one
         T[MIN(v, *minEdgeVertex) * numVertices + MAX(v, *minEdgeVertex)] = *minEdgeWeight;    // T := T U {(v, w)}
+        //printf("adding edge with weight %d between %d and %d\n", *minEdgeWeight, v, *minEdgeVertex);
 
         // simple version
         //T[v * numVertices + minEdgeVertex] = minEdgeWeight;
@@ -363,6 +367,19 @@ __global__ void sumInt(int *arr, int len, int *result) {
     *result = n;
 }
 
+__device__ void printTreeHelper(int *T, int numVertices) {
+    for (int v = 0; v < numVertices; ++v) {
+        for (int e = 0; e < numVertices; ++e) {
+            if (T[v * numVertices + e] != 0) {
+                printf("MST edge has weight of size %d between %d and %d\n", T[v * numVertices + e], v, e);
+            }
+        }
+    }
+}
+
+__global__ void printTree(int *T, int numVertices) {
+    printTreeHelper(T, numVertices);
+}
 
 // main function for Boruvka's algorithm
 int boruvka(Graph &g, int &time) {
@@ -406,27 +423,27 @@ int boruvka(Graph &g, int &time) {
     while (numExistingVertices > 1) {
         //printf("%d vertices remaining\n", numExistingVertices);
         // get pseudo-tree from the graph
-        //getPseudoTree<<<1,numVertices>>>(graph, T, parent, numVertices, exists);
+        getPseudoTree<<<1,numVertices>>>(graph, T, parent, numVertices, exists);
         cudaDeviceSynchronize();
-        getPseudoTreeSeq<<<1,1>>>(graph, T, parent, numVertices, exists);
+        //getPseudoTreeSeq<<<1,1>>>(graph, T, parent, numVertices, exists);
 
         // convert pseudo-trees to rooted trees
-        //makeRootedTrees<<<1,numVertices>>>(parent, exists);
-        makeRootedTreesSeq<<<1,1>>>(parent, exists, numVertices);
+        makeRootedTrees<<<1,numVertices>>>(parent, exists);
+        //makeRootedTreesSeq<<<1,1>>>(parent, exists, numVertices);
         cudaDeviceSynchronize();
 
         // convert every rooted tree into a rooted star
-        //makeRootedStars<<<1,numVertices>>>(parent, exists);
-        makeRootedStarsSeq<<<1,1>>>(parent, exists, numVertices);
+        makeRootedStars<<<1,numVertices>>>(parent, exists);
+        //makeRootedStarsSeq<<<1,1>>>(parent, exists, numVertices);
         cudaDeviceSynchronize();
 
         // contract all rooted stars into a single vertex
-        //transferEdgesToParent<<<1,numVertices>>>(graph, parent, numVertices, exists);
+        transferEdgesToParent<<<1,numVertices>>>(graph, parent, numVertices, exists);
         cudaDeviceSynchronize();
         //transferAllEdgesToParent<<<1,numVertices * numVertices>>>(graph, parent, numVertices, exists);
-        transferEdgesSeq<<<1,1>>>(graph, parent, numVertices, exists);
-        //contractRootedStars<<<1,numVertices>>>(graph, parent, numVertices, exists);
-        contractRootedStarsSeq<<<1,1>>>(graph, parent, numVertices, exists);
+        //transferEdgesSeq<<<1,1>>>(graph, parent, numVertices, exists);
+        contractRootedStars<<<1,numVertices>>>(graph, parent, numVertices, exists);
+        //contractRootedStarsSeq<<<1,1>>>(graph, parent, numVertices, exists);
         cudaDeviceSynchronize();
 
         // update number of existing vertices
@@ -434,6 +451,8 @@ int boruvka(Graph &g, int &time) {
         sumByte<<<1,1>>>((uint8_t *)exists, numVertices, d_numExistingVertices);
         cudaMemcpy(&numExistingVertices, d_numExistingVertices, sizeof(int), cudaMemcpyDeviceToHost);
     }
+
+    //printTree<<<1,1>>>(T, numVertices);
 
     // return the total weight of the minimum spanning tree
     int result;
