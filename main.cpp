@@ -7,12 +7,12 @@
 #include "boruvka_mst_gpu.h"
 #include "prim_mst_gpu.h"
 
-#define FIXED_DENSITY 80
+#define FIXED_DENSITY 50
 #define FIXED_DENSITY_COUNT 5
 #define V_START 1000
 #define V_STEP 500
 
-#define FIXED_V 100
+#define FIXED_V 1000
 #define FIXED_V_COUNT 5
 #define DENSITY_START 10
 #define DENSITY_STEP 20
@@ -55,16 +55,12 @@ int main() {
 		//std::cout << i << " " << d << std::endl;
 		Graph g10(i);
 		g10.generateConnectedGraphWithDensity(d);
-		//std::cout << "Prim    GPU: " << prim_mst_hybrid(g10,time) << " CPU: " << primSeq(g10.raw(),g10.size(), time) << std::endl;
-		//assert(prim_mst_hybrid(g10,time) == primSeq(g10.raw(),g10.size(), time));
+		std::cout << "Prim    GPU: " << prim_mst_hybrid(g10,time) << " CPU: " << primSeq(g10.raw(),g10.size(), time) << std::endl;
+		assert(prim_mst_hybrid(g10,time) == primSeq(g10.raw(),g10.size(), time));
 		std::cout << "Boruvka GPU: " << boruvka(g10,time) << " CPU: " << primSeq(g10.raw(),g10.size(), time) << std::endl;
 		assert(boruvka(g10, time) == primSeq(g10.raw(),g10.size(), time));
 	}
 	printf("test PASS!\n");
-	//printf("prim mst hybrid on graph g10: %d\n", prim_mst_hybrid(g10,time));
-	//printf("primSeq() on graph g10: %d\n", primSeq(g10.raw(),g10.size()));
-	
-
 
 	printf("\n\n\n\nperformance test:\n\n");
 	int prim_cpu_fv[FIXED_V_COUNT]={0};
@@ -84,24 +80,22 @@ int main() {
 	{
 		Graph g(V_fd);
 		g.generateConnectedGraphWithDensity(FIXED_DENSITY);
-		primSeq(g.raw(), g.size(), prim_cpu_fd[i]);
-		printf("sequential completed\n");
-		//prim_mst_hybrid(g,prim_gpu_fd[i]);
-		printf("parallel prim completed\n");
-		//boru_cpu(g,boru_cpu_fd[i]);
-		boruvka(g,boru_gpu_fd[i]);
-		printf("boruvka completed\n");
+		prim_cpu(g, prim_cpu_fd[i]);
+		prim_mst_hybrid(g,prim_gpu_fd[i]);
+		boruvka_cpu(g,boru_cpu_fd[i]);
+		//boruvka(g,boru_gpu_fd[i]);
 		V_fd+=V_STEP;
 		
 		printf("prim_cpu finished at %dms\n", prim_cpu_fd[i]);
 		printf("prim_gpu finished at %dms\n", prim_gpu_fd[i]);
-		//printf("boru_cpu finished at %dms\n", boru_cpu_fd[i]);
-		printf("boru_gpu finished at %dms\n", boru_gpu_fd[i]);
+		printf("boru_cpu finished at %dms\n", boru_cpu_fd[i]);
+	//	printf("boru_gpu finished at %dms\n", boru_gpu_fd[i]);
 	}
 	printf("\n\n");	
 
 
 	printf("Fixed number of vertices to be %d%%; increase density:\n", FIXED_V);
+
 	//fixed V; increase density
 	int V_fv=FIXED_V;
 	int density_fv=DENSITY_START;
@@ -109,19 +103,16 @@ int main() {
 	{
 		Graph g(V_fv);
 		g.generateConnectedGraphWithDensity(density_fv);
-		primSeq(g.raw(), g.size(), prim_cpu_fv[i]);
-		printf("sequential completed\n");
-		//prim_mst_hybrid(g,prim_gpu_fv[i]);
-		printf("parallel prim completed\n");
-		//boru_cpu(g,boru_cpu_fv[i]);
-		boruvka(g,boru_gpu_fv[i]);
-		printf("boruvka completed\n");
+		prim_cpu(g, prim_cpu_fv[i]);
+		prim_mst_hybrid(g,prim_gpu_fv[i]);
+		boruvka_cpu(g,boru_cpu_fv[i]);
+		//boruvka(g,boru_gpu_fv[i]);
 		density_fv+=DENSITY_STEP;
 		
 		printf("prim_cpu finished at %dms\n", prim_cpu_fv[i]);
 		printf("prim_gpu finished at %dms\n", prim_gpu_fv[i]);
-		//printf("boru_cpu finished at %dms\n", boru_cpu_fv[i]);
-		printf("boru_gpu finished at %dms\n", boru_gpu_fv[i]);
+		printf("boru_cpu finished at %dms\n", boru_cpu_fv[i]);
+		//printf("boru_gpu finished at %dms\n", boru_gpu_fv[i]);
 	}
 
 }

@@ -25,7 +25,6 @@ int* scan_result_gpu;
 
 
 
-
 int* d;
 int* isFixed;
 int* R;
@@ -53,19 +52,21 @@ int* MWE
 	int global_idx=blockDim.x * blockIdx.x + threadIdx.x;
 	int z = global_idx/V;
 	int k = global_idx-z*V;
-
+	
+	cudaDeviceSynchronize();
 	if(z<R_size && k<V) //explore every vertex in R
 	{
 		if (graph[R[z]*V+k]!= INT_MAX && isFixed[k]==0 && R[z]!=k )
 		{
 			
-			if(graph[R[z]*V+k] == MWE[R[z]] || graph[R[z]*V+k] == MWE[k] )
+			//printf("checking edge R[z]:%d-k:%d\n", R[z], k);
+			if(graph[R[z]*V+k] == MWE[k] )
 			{
 				isFixed[k]=true;
 				T[k]=graph[R[z]*V+k];
 				R_next[k]=1;
 				//printf("vertex %d (%d-%d,%d) is now fixed due to MWE\n",k,k,R[z],graph[R[z]*V+k]) ;
-				//printf("add %d-%d,%d to R\n", R[z], k, graph[R[z]*V+k]);
+
 			}
 			else if (d[k]> graph[R[z]*V+k])
 			{
@@ -349,7 +350,7 @@ int prim_mst_hybrid(Graph& g, int& time)
 	time=(int)(endms-startms);
 
 	int MST_total_weight=0;
-	//printf("prim_gpu T: ");
+	//printf("prim_gpu T:");
 	for(int i =0; i < V; i++)
 	{
 		//printf("%d ", T[i]);
@@ -443,13 +444,13 @@ int prim_mst_hybrid_bad_scan(Graph& g, int& time)
 	time=(int)(endms-startms);
 
 	int MST_total_weight=0;
-	//printf("prim_gpu T: ");
+	printf("prim_gpu T: ");
 	for(int i =0; i < V; i++)
 	{
-		//printf("%d ", T[i]);
+		printf("%d ", T[i]);
 		MST_total_weight+=T[i];
 	}
-	//printf("\n");
+	printf("\n");
 	var_free();
 	gpu_var_free();
 	return MST_total_weight;
