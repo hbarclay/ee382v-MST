@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <chrono>
 #include "boruvka_mst_gpu.h"
 
 // Some useful macros
@@ -274,7 +275,7 @@ __global__ void sumInt(int *arr, int len, int *result) {
 */
 
 // main function for Boruvka's algorithm
-int boruvka(Graph &g) {
+int boruvka_gpu(Graph &g, int& time) {
     // copy graph to GPU
     int *graph;
     int numVertices = g.size();
@@ -307,6 +308,7 @@ int boruvka(Graph &g) {
     int numExistingVertices = numVertices;
     int *d_numExistingVertices;
     cudaMalloc((void **)&d_numExistingVertices, sizeof(int));
+	auto begin = std::chrono::high_resolution_clock::now();
     while (numExistingVertices > 1) {
         printf("%d vertices remaining\n", numExistingVertices);
         // get pseudo-tree from the graph
@@ -333,8 +335,10 @@ int boruvka(Graph &g) {
     int *d_result;
     cudaMalloc((void **)&d_result, sizeof(int));
     sum<<<1,1>>>(T, numVertices * numVertices, d_result);
+	auto end = std::chrono::high_resolution_clock::now();
     cudaMemcpy(&result, d_result, sizeof(int), cudaMemcpyDeviceToHost);
 
+	time = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
     // clean up
     cudaFree(graph);
     cudaFree(T);
@@ -345,3 +349,4 @@ int boruvka(Graph &g) {
 
     return result;
 }
+

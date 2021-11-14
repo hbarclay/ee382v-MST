@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <vector>
 #include <iostream>
+#include <chrono>
 
 #include "mstSeq.h"
 #include "graph.h"
@@ -52,5 +53,22 @@ int primSeq(int* adjMap, int V) {
 	return total_weight;
 }
 
-// TODO Wrapper function to report time, borvukas algorithm, optimized versions of both
 
+int prim_cpu(const Graph& G, int& time) {
+
+	auto begin = std::chrono::high_resolution_clock::now();
+	int res = primSeq(G.raw(), G.size());
+	auto end = std::chrono::high_resolution_clock::now();
+
+	time = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+	return res;
+}
+
+// TODO Wrapper function to report time, borvukas algorithm, optimized versions of both
+int boruvkaSeq(int* adjMap, int V) {
+	
+}
+
+int boruvka_cpu(const Graph& G, int& time) {
+	
+}

@@ -51,7 +51,7 @@ class Graph {
 
 	void printEdges();
 	void printVertices();
-	void generateConnectedGraph(int _E);
+	void generateConnectedGraph(long long _E);
 	void generateConnectedGraphWithDensity(int density);
 	int* raw() const { return adjMatrix; }
 	int size() const { return V; }
