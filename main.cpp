@@ -8,9 +8,9 @@
 #include "prim_mst_gpu.h"
 
 #define FIXED_DENSITY 50
-#define FIXED_DENSITY_COUNT 5
-#define V_START 1000
-#define V_STEP 500
+#define FIXED_DENSITY_COUNT 10
+#define V_START 250
+#define V_STEP 250
 
 #define FIXED_V 1000
 #define FIXED_V_COUNT 5
