@@ -53,11 +53,13 @@ int main() {
 		std::cout << i << " " << d << std::endl;
 		Graph g10(i);
 		g10.generateConnectedGraphWithDensity(d);
-		if (i == 14) {
+		if (i == 8) {
 			g10.printEdges();
 		}
 		std::cout << "GPU: " << prim_mst_hybrid(g10,time) << " CPU: " << primSeq(g10.raw(),g10.size()) << std::endl;
 		assert(prim_mst_hybrid(g10,time) == primSeq(g10.raw(),g10.size()));
+		std::cout << "Boruvka GPU: " << boruvka(g10,time) << " CPU: " << primSeq(g10.raw(),g10.size()) << std::endl;
+		assert(boruvka(g10, time) == primSeq(g10.raw(),g10.size()));
 	}
 
 	//printf("prim mst hybrid on graph g10: %d\n", prim_mst_hybrid(g10,time));
