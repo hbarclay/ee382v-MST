@@ -4,7 +4,7 @@
 
 #include <vector>
 
-int primSeq(int* adjMap, int V);
+int primSeq(int* adjMap, int V, int &time);
 
 
 #endif //  __MST_SEQ_H

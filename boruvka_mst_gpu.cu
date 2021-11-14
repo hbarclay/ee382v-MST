@@ -10,6 +10,11 @@
 #define CEILING_DIV(a, b) ((a + b - 1) / b)
 #define MAX_INT ((int) 0x7fffffff)
 
+#define MAX_THREADS 256
+
+__managed__ static int numThreads;
+__managed__ static int numBlocks;
+
 // parallel memcpy for device context
 /*
 __global__ static void myMemcpyHelper(int * dst, int *src) {
@@ -25,11 +30,11 @@ __device__ static void myMemcpy(int *dst, int *src, int length) {
 
 // helper function for findMin()
 __global__ static void minReduce(int *src, int *dest, int len) {
-    int i = threadIdx.x;
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (2 * i + 1 < len) {
         dest[i] = MIN(src[2 * i], src[2 * i + 1]);
         //printf("at i = %d, min of %d and %d is %d\n", i, src[2 * i], src[2 * i + 1], dest[i]);
-    } else {
+    } else if (2 * i < len) {
         dest[i] = src[2 * i];
     }
 }
@@ -37,14 +42,20 @@ __global__ static void minReduce(int *src, int *dest, int len) {
 // function to find the min of an array using reduce
 __device__ static void findMin(int *arr, int len, int *min) {
     //printf("len = %d\n", len);
+    
+
     if (len == 1) {
         //printf("found min: %d\n", arr[0]);
         *min = arr[0];
     } else if (len > 1) {
         int *arr2;
         int newLen = CEILING_DIV(len, 2);
+
+        int localNumThreads = newLen < MAX_THREADS ? newLen : MAX_THREADS;
+        int localNumBlocks = CEILING_DIV(newLen, localNumThreads);
+
         cudaMalloc((void **)&arr2, newLen * sizeof(int));
-        minReduce<<<1, newLen>>>(arr, arr2, len);
+        minReduce<<<localNumBlocks, localNumThreads>>>(arr, arr2, len);
         cudaDeviceSynchronize();
         findMin(arr2, newLen, min);
         cudaFree(arr2);
@@ -87,17 +98,17 @@ __device__ static void findMinSeq(int *arr, int len, int *min) {
 }
 
 // function to find the index a specified value appears in an array
-__global__ static void findIdx(int *arr, int val, int *idx) {
-    int i = threadIdx.x;
+__global__ static void findIdx(int *arr, int val, int *idx, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
     //printf("Searching for %d\n", val);
-    if (arr[i] == val) {
+    if ((i < n) && (arr[i] == val)) {
         *idx = i;
     }
 }
 
 // function to create pseudo-trees (first for loop in handout)
 __global__ static void getPseudoTree(int *graph, int *T, int *parent, int numVertices, bool *exists) {
-    int v = threadIdx.x;
+    int v = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (exists[v]) {
         // find w such that (v, w) is the minimum weight edge of v.
@@ -117,7 +128,7 @@ __global__ static void getPseudoTree(int *graph, int *T, int *parent, int numVer
         *minEdgeVertex = 0;
         
         findMin(adjacencyList, numVertices, minEdgeWeight);
-        findIdx<<<1,numVertices>>>(adjacencyList, *minEdgeWeight, minEdgeVertex);
+        findIdx<<<numBlocks,numThreads>>>(adjacencyList, *minEdgeWeight, minEdgeVertex, numVertices);
         cudaDeviceSynchronize();
 
         //printf("parent of %d is %d with weight %d\n", v, *minEdgeVertex, *minEdgeWeight);
@@ -169,7 +180,7 @@ __global__ static void getPseudoTreeSeq(int *graph, int *T, int *parent, int num
 
 // function to convert pseudo trees into rooted trees (second for loop in handout)
 __global__ static void makeRootedTrees(int *parent, bool *exists) {
-    int v = threadIdx.x;
+    int v = blockIdx.x * blockDim.x + threadIdx.x;
     //printf("making rooted tree at %d\n", v);
     if ((exists[v]) && (parent[parent[v]] == v) && (v < parent[v])) {
         //printf("updating parent for %d\n", v);
@@ -178,7 +189,7 @@ __global__ static void makeRootedTrees(int *parent, bool *exists) {
 }
 
 __global__ static void makeRootedTreesSeq(int *parent, bool *exists, int numVertices) {
-    int v = threadIdx.x;
+    int v = blockIdx.x * blockDim.x + threadIdx.x;
     //printf("making rooted tree at %d\n", v);
     for (int v = 0; v < numVertices; ++v) {
         if ((exists[v]) && (parent[parent[v]] == v) && (v < parent[v])) {
@@ -190,7 +201,7 @@ __global__ static void makeRootedTreesSeq(int *parent, bool *exists, int numVert
 
 // function to convert rooted trees into rooted stars (third for loop in handout)
 __global__ static void makeRootedStars(int *parent, bool *exists) {
-    int v = threadIdx.x;
+    int v = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (exists[v]) {
         while (parent[v] != parent[parent[v]]) {
@@ -211,16 +222,16 @@ __global__ static void makeRootedStarsSeq(int *parent, bool *exists, int numVert
 
 // helper function for contractRootedStars() to remove all edges connected to a specified vertex
 __global__ static void removeEdges(int *graph, int v, int numVertices) {
-    int u = threadIdx.x;
+    int u = blockIdx.x * blockDim.x + threadIdx.x;
 
     graph[u * numVertices + v] = MAX_INT;
     graph[v * numVertices + u] = MAX_INT;
 }
 
 __global__ static void transferVertexEdgesToParent(int *graph, int numVertices, int *parent, int v) {
-    int i = threadIdx.x;
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
     
-    if ((graph[v * numVertices + i] != MAX_INT) && (i != parent[v])) {
+    if ((v < numVertices) && (graph[v * numVertices + i] != MAX_INT) && (i != parent[v])) {
         // while loop instead of if statement is a hack to fix race condition
         while ((graph[parent[v] * numVertices + parent[i]] > graph[v * numVertices + i])    
                 || (graph[parent[i] * numVertices + parent[v]] > graph[i * numVertices + v])) {
@@ -231,7 +242,7 @@ __global__ static void transferVertexEdgesToParent(int *graph, int numVertices, 
 }
 
 __global__ static void transferEdgesToParent(int *graph, int *parent, int numVertices, bool *exists) {
-    int v = threadIdx.x;
+    int v = blockIdx.x * blockDim.x + threadIdx.x;
 
     // remove vertex if it is not the root of a rooted star
     if ((exists[v]) && (parent[v] != v)) {
@@ -248,7 +259,7 @@ __global__ static void transferEdgesToParent(int *graph, int *parent, int numVer
         }
         */
 
-        transferVertexEdgesToParent<<<1,numVertices>>>(graph, numVertices, parent, v);
+        transferVertexEdgesToParent<<<numBlocks,numThreads>>>(graph, numVertices, parent, v);
         cudaDeviceSynchronize();
     }
 }
@@ -289,14 +300,14 @@ __global__ static void transferEdgesSeq(int *graph, int *parent, int numVertices
 
 // function to contract all rooted stars
 __global__ static void contractRootedStars(int *graph, int *parent, int numVertices, bool *exists) {
-    int v = threadIdx.x;
+    int v = blockIdx.x * blockDim.x + threadIdx.x;
 
     // remove vertex if it is not the root of a rooted star
     if ((exists[v]) && (parent[v] != v)) {
         //printf("contracting vertex %d\n", v);
         exists[v] = false;
         // remove edges that connect to this vertex
-        removeEdges<<<1,numVertices>>>(graph, v, numVertices);
+        removeEdges<<<numBlocks,numThreads>>>(graph, v, numVertices);
         //cudaDeviceSynchronize();
         /*
         for (int i = 0; i < numVertices; ++i) {
@@ -324,10 +335,10 @@ __global__ static void contractRootedStarsSeq(int *graph, int *parent, int numVe
 // helper function for sum()
 template<typename T>
 __global__ void sumReduce(T *src, T *dst, int len) {
-    int i = threadIdx.x;
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (2 * i + 1 < len) {
         dst[i] = src[2 * i] + src[2 * i + 1];
-    } else {
+    } else if (2 * i < len) {
         dst[i] = src[2 * i];
     }
 }
@@ -338,8 +349,12 @@ __global__ void sum(T *arr, int len, int *result) {
     if (len > 1) {
         T *arr2;
         int newLen = CEILING_DIV(len, 2);
+
+        int localNumThreads = newLen < MAX_THREADS ? newLen : MAX_THREADS;
+        int localNumBlocks = CEILING_DIV(newLen, localNumThreads);
+
         cudaMalloc((void **)&arr2, newLen * sizeof(T));
-        sumReduce<T><<<1, newLen>>>(arr, arr2, len);
+        sumReduce<T><<<localNumBlocks, localNumThreads>>>(arr, arr2, len);
         cudaDeviceSynchronize();
         sum<T><<<1,1>>>(arr2, newLen, result);
         cudaFree(arr2);
@@ -390,6 +405,9 @@ int boruvka(Graph &g, int &time) {
     cudaMalloc((void **) &graph, graphSize);
     cudaMemcpy(graph, g.raw(), graphSize, cudaMemcpyHostToDevice);
 
+    numThreads = numVertices < MAX_THREADS ? numVertices : MAX_THREADS;
+    numBlocks = CEILING_DIV(numVertices, numThreads);
+
     //printf("copied graph to GPU\n");
 
     // start timer
@@ -412,8 +430,9 @@ int boruvka(Graph &g, int &time) {
 
     // set up device vector to mark vertices as existant
     bool *exists;
-    cudaMalloc((void **) &exists, g.size() * sizeof(bool));
+    cudaMalloc((void **) &exists, (g.size() + MAX_THREADS) * sizeof(bool));
     cudaMemset((void *) exists, true, g.size() * sizeof(bool));
+    cudaMemset((void *) exists + MAX_THREADS, false, MAX_THREADS * sizeof(bool));
 
     //printf("Initialized global arrays\n");
 
@@ -423,26 +442,26 @@ int boruvka(Graph &g, int &time) {
     while (numExistingVertices > 1) {
         //printf("%d vertices remaining\n", numExistingVertices);
         // get pseudo-tree from the graph
-        getPseudoTree<<<1,numVertices>>>(graph, T, parent, numVertices, exists);
+        getPseudoTree<<<numBlocks,numThreads>>>(graph, T, parent, numVertices, exists);
         cudaDeviceSynchronize();
         //getPseudoTreeSeq<<<1,1>>>(graph, T, parent, numVertices, exists);
 
         // convert pseudo-trees to rooted trees
-        makeRootedTrees<<<1,numVertices>>>(parent, exists);
+        makeRootedTrees<<<numBlocks,numThreads>>>(parent, exists);
         //makeRootedTreesSeq<<<1,1>>>(parent, exists, numVertices);
         cudaDeviceSynchronize();
 
         // convert every rooted tree into a rooted star
-        makeRootedStars<<<1,numVertices>>>(parent, exists);
+        makeRootedStars<<<numBlocks,numThreads>>>(parent, exists);
         //makeRootedStarsSeq<<<1,1>>>(parent, exists, numVertices);
         cudaDeviceSynchronize();
 
         // contract all rooted stars into a single vertex
-        transferEdgesToParent<<<1,numVertices>>>(graph, parent, numVertices, exists);
+        transferEdgesToParent<<<numBlocks,numThreads>>>(graph, parent, numVertices, exists);
         cudaDeviceSynchronize();
         //transferAllEdgesToParent<<<1,numVertices * numVertices>>>(graph, parent, numVertices, exists);
         //transferEdgesSeq<<<1,1>>>(graph, parent, numVertices, exists);
-        contractRootedStars<<<1,numVertices>>>(graph, parent, numVertices, exists);
+        contractRootedStars<<<numBlocks,numThreads>>>(graph, parent, numVertices, exists);
         //contractRootedStarsSeq<<<1,1>>>(graph, parent, numVertices, exists);
         cudaDeviceSynchronize();
 

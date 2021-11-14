@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <vector>
 #include <iostream>
+#include <sys/time.h>
 
 #include "mstSeq.h"
 #include "graph.h"
@@ -21,11 +22,17 @@ int getMin(const std::vector<int>& d, const auto& fixed) {
 
 // very simple prim's implementation for correctness checks
 // this is O(V^2) ! Could be O(E log V) with adj list and min heap
-int primSeq(int* adjMap, int V) {
+int primSeq(int* adjMap, int V, int &time) {
 	std::vector<int> d(V, INF);
 	std::vector<int> parent(V, -1);
 	std::vector<bool> fixed(V, false);
 	std::vector<std::pair<int, int>> T(V);
+
+	struct timeval tv;
+    gettimeofday(&tv, NULL);
+    unsigned long long startTime =
+    (unsigned long long)(tv.tv_sec) * 1000 +
+    (unsigned long long)(tv.tv_usec) / 1000;
 
 	d[0] = 0;
 
@@ -48,6 +55,13 @@ int primSeq(int* adjMap, int V) {
 		total_weight += adjMap[parent[i]*V+i];
 		T.push_back(std::make_pair(parent[i], i));
 	}
+
+	// from https://stackoverflow.com/questions/1952290/how-can-i-get-utctime-in-millisecond-since-january-1-1970-in-c-language
+    gettimeofday(&tv, NULL);
+    unsigned long long endTime =
+    (unsigned long long)(tv.tv_sec) * 1000 +
+    (unsigned long long)(tv.tv_usec) / 1000;
+    time = endTime - startTime;
 
 	return total_weight;
 }
