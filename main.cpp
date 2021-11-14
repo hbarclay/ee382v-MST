@@ -45,24 +45,27 @@ int main() {
 	g8.addEdge(6,7,7); //should be 50
 
 	// test
-	// std::cout << "boruvka: " << boruvka(g8) << std::endl;
-
+	// std::cout << "boru_cpu(: " << boru_cpu((g8) << std::endl;
+	
+	//functional correctness test
+	printf("functional correctness test:\n");
 	int time;
 	for (int i = 2; i < 20; i++) {
 		int d = rand() % (100 + 1 - 50) + 50;
-		std::cout << i << " " << d << std::endl;
+		//std::cout << i << " " << d << std::endl;
 		Graph g10(i);
 		g10.generateConnectedGraphWithDensity(d);
-		if (i == 14) {
-			g10.printEdges();
-		}
 		std::cout << "GPU: " << prim_mst_hybrid(g10,time) << " CPU: " << primSeq(g10.raw(),g10.size()) << std::endl;
 		assert(prim_mst_hybrid(g10,time) == primSeq(g10.raw(),g10.size()));
+		//assert(boruvka(g10,time) == primSeq(g10.raw(),g10.size()));
 	}
-
+	printf("test passed\n");
 	//printf("prim mst hybrid on graph g10: %d\n", prim_mst_hybrid(g10,time));
 	//printf("primSeq() on graph g10: %d\n", primSeq(g10.raw(),g10.size()));
+	
 
+
+	printf("\n\n\n\n performance test:\n\n");
 	int prim_cpu_fv[FIXED_V_COUNT]={0};
 	int prim_gpu_fv[FIXED_V_COUNT]={0};
 	int boru_cpu_fv[FIXED_V_COUNT]={0};
@@ -72,7 +75,8 @@ int main() {
 	int boru_cpu_fd[FIXED_DENSITY_COUNT]={0};
 	int boru_gpu_fd[FIXED_DENSITY_COUNT]={0};
 
-
+	
+	printf("Fixed density to be %d%%; increase V:\n", FIXED_DENSITY);
 	//fixed density; increase V
 	int V_fd=V_START;
 	for(int i = 0; i <FIXED_DENSITY_COUNT;i++ )
@@ -80,9 +84,9 @@ int main() {
 		Graph g(V_fd);
 		g.generateConnectedGraphWithDensity(FIXED_DENSITY);
 		//primSeq(g.raw(), g.size());
-		//prim_mst_hybrid(g,prim_gpu_fd[i]);
-		//boru_cpu(g,boru_cpu_fd[i]);
-		//boru_gpu(g,boru_gpu_fd[i]);
+		prim_mst_hybrid(g,prim_gpu_fd[i]);
+		//boru_cpu((g,boru_cpu_fd[i]);
+		//boruvka(g,boru_gpu_fd[i]);
 		V_fd+=V_STEP;
 		
 		printf("prim_cpu finished at %dms\n", prim_cpu_fd[i]);
@@ -90,7 +94,10 @@ int main() {
 		printf("boru_cpu finished at %dms\n", boru_cpu_fd[i]);
 		printf("boru_gpu finished at %dms\n", boru_gpu_fd[i]);
 	}
+	printf("\n\n");	
 
+
+	printf("Fixed number of vertices to be %d%%; increase density:\n", FIXED_V);
 	//fixed V; increase density
 	int V_fv=FIXED_V;
 	int density_fv=DENSITY_START;
@@ -99,9 +106,9 @@ int main() {
 		Graph g(V_fv);
 		g.generateConnectedGraphWithDensity(density_fv);
 		//primSeq(g.raw(),prim_cpu_fv[i]);
-		//prim_mst_hybrid(g,prim_gpu_fv[i]);
-		//boru_cpu(g,boru_cpu_fv[i]);
-		//boru_gpu(g,boru_gpu_fv[i]);
+		prim_mst_hybrid(g,prim_gpu_fv[i]);
+		//boru_cpu((g,boru_cpu_fv[i]);
+		//boruvka(g,boru_gpu_fv[i]);
 		density_fv+=DENSITY_STEP;
 		
 		printf("prim_gpu finished at %dms\n", prim_cpu_fv[i]);
