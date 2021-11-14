@@ -50,15 +50,15 @@ int main() {
 	//functional correctness test
 	printf("functional correctness test:\n");
 	int time;
-	for (int i = 2; i < 20; i++) {
+	for (int i = 4; i < 20; i++) {
 		int d = rand() % (100 + 1 - 50) + 50;
 		//std::cout << i << " " << d << std::endl;
 		Graph g10(i);
 		g10.generateConnectedGraphWithDensity(d);
-		std::cout << "Prim    GPU: " << prim_mst_hybrid(g10,time) << " CPU: " << prim_cpu(g10,time) << std::endl;
+		std::cout << "Prim    GPU: " << prim_mst_hybrid(g10,time) << " CPU: " << prim_cpu(g10, time) << std::endl;
 		assert(prim_mst_hybrid(g10,time) == prim_cpu(g10, time));
-		//std::cout << "Boruvka GPU: " << boruvka(g10,time) << " CPU: " << boruvka_cpu(g10,time) << std::endl;
-		//assert(boruvka(g10, time) == boruvka_cpu(g10, time));
+		std::cout << "Boruvka GPU: " << boruvka(g10,time) << " CPU: " << prim_cpu(g10, time) << std::endl;
+		assert(boruvka(g10, time) == prim_cpu(g10, time));
 	}
 	printf("test PASS!\n");
 
@@ -83,13 +83,13 @@ int main() {
 		prim_cpu(g, prim_cpu_fd[i]);
 		prim_mst_hybrid(g,prim_gpu_fd[i]);
 		boruvka_cpu(g,boru_cpu_fd[i]);
-		//boruvka(g,boru_gpu_fd[i]);
+		boruvka(g,boru_gpu_fd[i]);
 		V_fd+=V_STEP;
 		
 		printf("prim_cpu finished at %dms\n", prim_cpu_fd[i]);
 		printf("prim_gpu finished at %dms\n", prim_gpu_fd[i]);
 		printf("boru_cpu finished at %dms\n", boru_cpu_fd[i]);
-	//	printf("boru_gpu finished at %dms\n", boru_gpu_fd[i]);
+		printf("boru_gpu finished at %dms\n", boru_gpu_fd[i]);
 	}
 	printf("\n\n");	
 
@@ -106,13 +106,13 @@ int main() {
 		prim_cpu(g, prim_cpu_fv[i]);
 		prim_mst_hybrid(g,prim_gpu_fv[i]);
 		boruvka_cpu(g,boru_cpu_fv[i]);
-		//boruvka(g,boru_gpu_fv[i]);
+		boruvka(g,boru_gpu_fv[i]);
 		density_fv+=DENSITY_STEP;
 		
 		printf("prim_cpu finished at %dms\n", prim_cpu_fv[i]);
 		printf("prim_gpu finished at %dms\n", prim_gpu_fv[i]);
 		printf("boru_cpu finished at %dms\n", boru_cpu_fv[i]);
-		//printf("boru_gpu finished at %dms\n", boru_gpu_fv[i]);
+		printf("boru_gpu finished at %dms\n", boru_gpu_fv[i]);
 	}
 
 }

@@ -1,10 +1,10 @@
 #include <assert.h>
 #include <vector>
 #include <iostream>
+#include <sys/time.h>
 #include <chrono>
 #include <vector>
 #include <tuple>
-
 #include "mstSeq.h"
 #include "graph.h"
 

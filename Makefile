@@ -1,5 +1,5 @@
 CXX := g++
-CXX_FLAGS := -std=c++11 -Wall
+CXX_FLAGS := -std=c++11 -Wall -g
 LDFLAGS := 
 INCLUDE := ./
 BUILD := ./
@@ -13,7 +13,7 @@ DEPS := $(OBJS:.o=.d)
 CUDA_ROOT := /usr/local/cuda-9.1
 
 NVCC := nvcc
-NVCC_FLAGS := -arch=sm_35 
+NVCC_FLAGS := -arch=sm_35 -g
 CUDA_INC_DIR := -I$(CUDA_ROOT)/include
 CUDA_LIB_DIR := -L$(CUDA_ROOT)/lib64
 CUDA_LIBS := -lcudart -lcudadevrt
@@ -26,15 +26,15 @@ all: $(EXE)
 
 $(OBJ_DIR)/%.o: %.cpp Makefile
 	@mkdir -p $(@D)
-	$(CXX) $(CXXFLAGS) -c $< -o $@ -MMD -I$(INCLUDE)
+	$(CXX) -g $(CXXFLAGS) -c $< -o $@ -MMD -I$(INCLUDE)
 
 $(OBJ_DIR)/%.o : %.cu
 	@mkdir -p $(@D)
-	$(NVCC) $(NVCC_FLAGS) -rdc=true -dc $^ -o $@ $(NVCC_LIBS)
+	$(NVCC) -g $(NVCC_FLAGS) -rdc=true -dc $^ -o $@ $(NVCC_LIBS)
 
 $(OBJ_DIR)/cu_link.o: $(CU_OBJS)
 	@mkdir -p $(@D)
-	$(NVCC) $(NVCC_FLAGS) -dlink -o $@ $(CU_OBJS) $(NVCC_LIBS)
+	$(NVCC) -g $(NVCC_FLAGS) -dlink -o $@ $(CU_OBJS) $(NVCC_LIBS)
 
 $(EXE): $(CU_OBJS) $(OBJS) $(CU_LINK_OBJS)
 	$(CXX) $(CXXFLAGS) $(OBJS) $(CU_OBJS) $(CU_LINK_OBJS) -o $@ $(CUDA_INC_DIR) $(CUDA_LIB_DIR) $(CUDA_LIBS)
