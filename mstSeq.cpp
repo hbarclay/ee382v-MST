@@ -41,15 +41,24 @@ int primSeq(int* adjMap, int V) {
 			}
 		}
 	}
-
+	
+	//int solution[V]={0};
 	int total_weight = 0;
 	for (int i = 1; i < V; i++) {
 		//std::cout << adjMap[parent[i]*V+i] << " " << parent[i] << " " << i << std::endl;
 		total_weight += adjMap[parent[i]*V+i];
 		T.push_back(std::make_pair(parent[i], i));
+		//solution[i] = adjMap[parent[i]*V+i];
 	}
+	//printf("prim_cpu T:");
+	//for (int i = 0; i < V; i++) {
+	//	printf("%d ", solution[i]);
+	//}
+	//printf("\n");
 
 	return total_weight;
+
+	
 }
 
 // TODO Wrapper function to report time, borvukas algorithm, optimized versions of both
