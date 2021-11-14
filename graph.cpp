@@ -5,7 +5,7 @@
 #include "graph.h"
 
 
-void Graph::printEdges() {
+void Graph::printEdges() const {
 	std::cout << "list of edges: \n";
 	for (int i = 0; i < V; i++) {
 		for (int j = i+1; j < V; j++) {
@@ -15,7 +15,7 @@ void Graph::printEdges() {
 	}
 }
 
-void Graph::printVertices() {
+void Graph::printVertices() const {
 	std::cout << "list of vertices: \n";
 	for (int i = 0; i < V; i++) {
 		std::cout << "vertex[" << i << "] connects to: ";
@@ -27,7 +27,7 @@ void Graph::printVertices() {
 	}		
 }
 
-void Graph::generateConnectedGraph(int _E) {
+void Graph::generateConnectedGraph(long long _E) {
 	if(_E<V-1)
 	{
 		printf("number of edge is too low to create a fully connected graph!\n");
@@ -72,7 +72,7 @@ void Graph::generateConnectedGraph(int _E) {
 }
 
 void Graph::generateConnectedGraphWithDensity(int density){
-	int _E = density*V*(V-1)/2/100;
+	long long _E = (density/100.0)*V*(V-1)/2;
 	printf("generating a graph with %d vertices %d%% density(which is %d edges)...\n",V,density, _E );
 	generateConnectedGraph(_E);
 }

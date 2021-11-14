@@ -7,12 +7,12 @@
 #include "boruvka_mst_gpu.h"
 #include "prim_mst_gpu.h"
 
-#define FIXED_DENSITY 80
+#define FIXED_DENSITY 50
 #define FIXED_DENSITY_COUNT 5
-#define V_START 100
-#define V_STEP 50
+#define V_START 1000
+#define V_STEP 500
 
-#define FIXED_V 100
+#define FIXED_V 1000
 #define FIXED_V_COUNT 5
 #define DENSITY_START 10
 #define DENSITY_STEP 20
@@ -55,15 +55,27 @@ int main() {
 		//std::cout << i << " " << d << std::endl;
 		Graph g10(i);
 		g10.generateConnectedGraphWithDensity(d);
-		std::cout << "Prim    GPU: " << prim_mst_hybrid(g10,time) << " CPU: " << primSeq(g10.raw(),g10.size()) << std::endl;
-		assert(prim_mst_hybrid(g10,time) == primSeq(g10.raw(),g10.size()));
-		std::cout << "Boruvka GPU: " << boruvka(g10,time) << " CPU: " << primSeq(g10.raw(),g10.size()) << std::endl;
-		assert(boruvka(g10, time) == primSeq(g10.raw(),g10.size()));
+		std::cout << "Prim    GPU: " << prim_mst_hybrid(g10,time) << " CPU: " << prim_cpu(g10, time) << std::endl;
+	int time;
+	std::cout << "boruvka: " << boruvka_cpu(g8, time) << std::endl;
+
+	for (int i = 6; i < 25; i++) {
+		int d = rand() % (100 + 1 - 50) + 50;
+		//std::cout << i << " " << d << std::endl;
+		Graph g10(i);
+		g10.generateConnectedGraphWithDensity(d);
+		std::cout << "Prim    GPU: " << prim_mst_hybrid(g10,time) << " CPU: " << prim_cpu(g10,time) << std::endl;
+		assert(prim_mst_hybrid(g10,time) == prim_cpu(g10, time));
+		std::cout << "Boruvka GPU: " << boruvka_cpu(g10,time) << " CPU: " << prim_cpu(g10,time) << std::endl;
+		assert(boruvka(g10, time) == prim_cpu(g10, time));
 	}
 	printf("test PASS!\n");
 	//printf("prim mst hybrid on graph g10: %d\n", prim_mst_hybrid(g10,time));
 	//printf("primSeq() on graph g10: %d\n", primSeq(g10.raw(),g10.size()));
 	
+	}
+	printf("test PASS!\n");
+	//printf("prim mst hybrid on graph g10: %d\n", prim_mst_hybrid(g10,time));
 
 
 	printf("\n\n\n\nperformance test:\n\n");

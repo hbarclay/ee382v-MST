@@ -49,12 +49,13 @@ class Graph {
 		E++;
 	}
 
-	void printEdges();
-	void printVertices();
-	void generateConnectedGraph(int _E);
+	void printEdges() const;
+	void printVertices() const;
+	void generateConnectedGraph(long long _E);
 	void generateConnectedGraphWithDensity(int density);
 	int* raw() const { return adjMatrix; }
 	int size() const { return V; }
+	int edges() const { return E; }
 
  private:
 	int V=0;
