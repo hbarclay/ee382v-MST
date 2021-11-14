@@ -66,7 +66,7 @@ int main() {
 		g10.generateConnectedGraphWithDensity(d);
 		std::cout << "Prim    GPU: " << prim_mst_hybrid(g10,time) << " CPU: " << prim_cpu(g10,time) << std::endl;
 		assert(prim_mst_hybrid(g10,time) == prim_cpu(g10, time));
-		std::cout << "Boruvka GPU: " << boruvka_cpu(g10,time) << " CPU: " << prim_cpu(g10,time) << std::endl;
+		std::cout << "Boruvka GPU: " << boruvka(g10,time) << " CPU: " << prim_cpu(g10,time) << std::endl;
 		assert(boruvka(g10, time) == prim_cpu(g10, time));
 	}
 	printf("test PASS!\n");
