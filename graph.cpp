@@ -5,7 +5,7 @@
 #include "graph.h"
 
 
-void Graph::printEdges() {
+void Graph::printEdges() const {
 	std::cout << "list of edges: \n";
 	for (int i = 0; i < V; i++) {
 		for (int j = i+1; j < V; j++) {
@@ -15,7 +15,7 @@ void Graph::printEdges() {
 	}
 }
 
-void Graph::printVertices() {
+void Graph::printVertices() const {
 	std::cout << "list of vertices: \n";
 	for (int i = 0; i < V; i++) {
 		std::cout << "vertex[" << i << "] connects to: ";

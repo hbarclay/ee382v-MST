@@ -45,10 +45,10 @@ int main() {
 	g8.addEdge(6,7,7); //should be 50
 
 	// test
-	// std::cout << "boruvka: " << boruvka(g8) << std::endl;
-
 	int time;
-	for (int i = 2; i < 20; i++) {
+	std::cout << "boruvka: " << boruvka_cpu(g8, time) << std::endl;
+
+	for (int i = 6; i < 25; i++) {
 		int d = rand() % (100 + 1 - 50) + 50;
 		std::cout << i << " " << d << std::endl;
 		Graph g10(i);
@@ -56,8 +56,9 @@ int main() {
 		if (i == 14) {
 			g10.printEdges();
 		}
-		std::cout << "GPU: " << prim_mst_hybrid(g10,time) << " CPU: " << prim_cpu(g10, time) << std::endl;
-		assert(prim_mst_hybrid(g10,time) == prim_cpu(g10, time));
+		std::cout << "GPU: " << boruvka_cpu(g10,time) << " CPU: " << prim_cpu(g10, time) << std::endl;
+		//std::cout << "GPU: " << boruvka_cpu(g10,time) <<  std::endl;
+		assert(boruvka_cpu(g10,time) == prim_cpu(g10, time));
 	}
 
 	//printf("prim mst hybrid on graph g10: %d\n", prim_mst_hybrid(g10,time));
@@ -81,8 +82,8 @@ int main() {
 		g.generateConnectedGraphWithDensity(FIXED_DENSITY);
 		prim_cpu(g, prim_cpu_fd[i]);
 		//prim_mst_hybrid(g,prim_gpu_fd[i]);
-		//boru_cpu(g,boru_cpu_fd[i]);
-		boruvka_gpu(g,boru_gpu_fd[i]);
+		boruvka_cpu(g,boru_cpu_fd[i]);
+		//boruvka_gpu(g,boru_gpu_fd[i]);
 		V_fd+=V_STEP;
 		
 		printf("prim_cpu finished at %dms\n", prim_cpu_fd[i]);
@@ -99,8 +100,8 @@ int main() {
 		Graph g(V_fv);
 		g.generateConnectedGraphWithDensity(density_fv);
 		prim_cpu(g,prim_cpu_fv[i]);
-		prim_mst_hybrid(g,prim_gpu_fv[i]);
-		//boru_cpu(g,boru_cpu_fv[i]);
+		//prim_mst_hybrid(g,prim_gpu_fv[i]);
+		boruvka_cpu(g,boru_cpu_fv[i]);
 		boruvka_gpu(g,boru_gpu_fv[i]);
 		density_fv+=DENSITY_STEP;
 		

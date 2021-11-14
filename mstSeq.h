@@ -6,5 +6,6 @@
 #include "graph.h"
 
 int prim_cpu(const Graph&, int&);
+int boruvka_cpu(const Graph&, int&);
 
 #endif //  __MST_SEQ_H
