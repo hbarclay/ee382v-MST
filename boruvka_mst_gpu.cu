@@ -135,6 +135,8 @@ __global__ static void getPseudoTree(int *graph, int *T, int *parent, int numVer
 
         // update the parent
         parent[v] = *minEdgeVertex;
+        printf("set parent of %d to %d\n", v, parent[v]);
+        cudaDeviceSynchronize();
 
         // Update the minimum spanning tree. Since there are two copies of each edge in the matrix, only update the earlier one
         T[MIN(v, *minEdgeVertex) * numVertices + MAX(v, *minEdgeVertex)] = *minEdgeWeight;    // T := T U {(v, w)}
@@ -179,12 +181,32 @@ __global__ static void getPseudoTreeSeq(int *graph, int *T, int *parent, int num
 }
 
 // function to convert pseudo trees into rooted trees (second for loop in handout)
-__global__ static void makeRootedTrees(int *parent, bool *exists) {
+__global__ static void makeRootedTrees(int *parent, bool *exists, int numVertices) {
     int v = blockIdx.x * blockDim.x + threadIdx.x;
+    printf("hello world\n");
+    cudaDeviceSynchronize();
+    if (parent[v] > numVertices) {
+        printf("bad parent %d\n", parent[v]);
+    }
+    cudaDeviceSynchronize();
     //printf("making rooted tree at %d\n", v);
-    if ((exists[v]) && (parent[parent[v]] == v) && (v < parent[v])) {
+    if (v < numVertices) {
+        printf("1\n");
+        cudaDeviceSynchronize();
+        if (exists[v]) {
+            printf("2\n");
+            cudaDeviceSynchronize();
+            if (parent[parent[v]] == v) {
+                printf("3\n");
+                cudaDeviceSynchronize();
+                if (v < parent[v]) {
+                    printf("4\n");
+                    cudaDeviceSynchronize();
         //printf("updating parent for %d\n", v);
-        parent[v] = v;
+                    parent[v] = v;
+                }
+            }
+        }
     }
 }
 
@@ -230,14 +252,24 @@ __global__ static void removeEdges(int *graph, int v, int numVertices) {
 
 __global__ static void transferVertexEdgesToParent(int *graph, int numVertices, int *parent, int v) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    // for an edge from vertex v to vertex i
+
+    // parent array => parent[v] is the root of the rooted star that contains v
+
+    // if the weight of the edge between v and i < weight of edge between parent[v] and parent[i], then transfer the edge
     
-    if ((v < numVertices) && (graph[v * numVertices + i] != MAX_INT) && (i != parent[v])) {
+    if ((v < numVertices) && (i < numVertices) && (graph[v * numVertices + i] != MAX_INT) && (i != parent[v])) {
         // while loop instead of if statement is a hack to fix race condition
-        while ((graph[parent[v] * numVertices + parent[i]] > graph[v * numVertices + i])    
+        atomicMin(&(graph[parent[v] * numVertices + parent[i]]), graph[v * numVertices + i]);
+        atomicMin(&(graph[parent[i] * numVertices + parent[v]]), graph[i * numVertices + v]);
+        /*
+        while ((graph[parent[v] * numVertices + parent[i]] > graph[v * numVertices + i])  //   
                 || (graph[parent[i] * numVertices + parent[v]] > graph[i * numVertices + v])) {
-            graph[parent[v] * numVertices + parent[i]] = graph[v * numVertices + i];
+            graph[parent[v] * numVertices + parent[i]] = graph[v * numVertices + i];  
             graph[parent[i] * numVertices + parent[v]] = graph[i * numVertices + v];
         }
+        */
     }
 }
 
@@ -444,24 +476,29 @@ int boruvka(Graph &g, int &time) {
         // get pseudo-tree from the graph
         getPseudoTree<<<numBlocks,numThreads>>>(graph, T, parent, numVertices, exists);
         cudaDeviceSynchronize();
+        printf("found pseudo trees\n");
         //getPseudoTreeSeq<<<1,1>>>(graph, T, parent, numVertices, exists);
 
         // convert pseudo-trees to rooted trees
-        makeRootedTrees<<<numBlocks,numThreads>>>(parent, exists);
+        makeRootedTrees<<<numBlocks,numThreads>>>(parent, exists, numVertices);
         //makeRootedTreesSeq<<<1,1>>>(parent, exists, numVertices);
         cudaDeviceSynchronize();
+        printf("made rooted trees\n");
 
         // convert every rooted tree into a rooted star
         makeRootedStars<<<numBlocks,numThreads>>>(parent, exists);
         //makeRootedStarsSeq<<<1,1>>>(parent, exists, numVertices);
         cudaDeviceSynchronize();
+        printf("made rooted stars\n");
 
         // contract all rooted stars into a single vertex
         transferEdgesToParent<<<numBlocks,numThreads>>>(graph, parent, numVertices, exists);
         cudaDeviceSynchronize();
+        printf("transferred edges to parent\n");
         //transferAllEdgesToParent<<<1,numVertices * numVertices>>>(graph, parent, numVertices, exists);
         //transferEdgesSeq<<<1,1>>>(graph, parent, numVertices, exists);
         contractRootedStars<<<numBlocks,numThreads>>>(graph, parent, numVertices, exists);
+        printf("contracted rooted stars\n");
         //contractRootedStarsSeq<<<1,1>>>(graph, parent, numVertices, exists);
         cudaDeviceSynchronize();
 
