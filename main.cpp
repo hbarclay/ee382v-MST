@@ -55,21 +55,18 @@ int main() {
 		//std::cout << i << " " << d << std::endl;
 		Graph g10(i);
 		g10.generateConnectedGraphWithDensity(d);
-		if (i == 8) {
-			g10.printEdges();
-		}
-		std::cout << "GPU: " << prim_mst_hybrid(g10,time) << " CPU: " << primSeq(g10.raw(),g10.size()) << std::endl;
+		std::cout << "Prim    GPU: " << prim_mst_hybrid(g10,time) << " CPU: " << primSeq(g10.raw(),g10.size()) << std::endl;
 		assert(prim_mst_hybrid(g10,time) == primSeq(g10.raw(),g10.size()));
 		std::cout << "Boruvka GPU: " << boruvka(g10,time) << " CPU: " << primSeq(g10.raw(),g10.size()) << std::endl;
 		assert(boruvka(g10, time) == primSeq(g10.raw(),g10.size()));
 	}
-	printf("test passed\n");
+	printf("test PASS!\n");
 	//printf("prim mst hybrid on graph g10: %d\n", prim_mst_hybrid(g10,time));
 	//printf("primSeq() on graph g10: %d\n", primSeq(g10.raw(),g10.size()));
 	
 
 
-	printf("\n\n\n\n performance test:\n\n");
+	printf("\n\n\n\nperformance test:\n\n");
 	int prim_cpu_fv[FIXED_V_COUNT]={0};
 	int prim_gpu_fv[FIXED_V_COUNT]={0};
 	int boru_cpu_fv[FIXED_V_COUNT]={0};
@@ -87,7 +84,7 @@ int main() {
 	{
 		Graph g(V_fd);
 		g.generateConnectedGraphWithDensity(FIXED_DENSITY);
-		primSeq(g.raw(), g.size());
+		//primSeq(g.raw(), g.size());
 		prim_mst_hybrid(g,prim_gpu_fd[i]);
 		//boru_cpu(g,boru_cpu_fd[i]);
 		boruvka(g,boru_gpu_fd[i]);
