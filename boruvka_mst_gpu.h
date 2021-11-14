@@ -3,6 +3,6 @@
 
 #include "graph.h"
 
-int boruvka(Graph &g);
+int boruvka(Graph &g, int& time);
 
 #endif

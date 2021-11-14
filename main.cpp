@@ -55,9 +55,13 @@ int main() {
 		//std::cout << i << " " << d << std::endl;
 		Graph g10(i);
 		g10.generateConnectedGraphWithDensity(d);
+		if (i == 8) {
+			g10.printEdges();
+		}
 		std::cout << "GPU: " << prim_mst_hybrid(g10,time) << " CPU: " << primSeq(g10.raw(),g10.size()) << std::endl;
 		assert(prim_mst_hybrid(g10,time) == primSeq(g10.raw(),g10.size()));
-		//assert(boruvka(g10,time) == primSeq(g10.raw(),g10.size()));
+		std::cout << "Boruvka GPU: " << boruvka(g10,time) << " CPU: " << primSeq(g10.raw(),g10.size()) << std::endl;
+		assert(boruvka(g10, time) == primSeq(g10.raw(),g10.size()));
 	}
 	printf("test passed\n");
 	//printf("prim mst hybrid on graph g10: %d\n", prim_mst_hybrid(g10,time));
@@ -83,15 +87,15 @@ int main() {
 	{
 		Graph g(V_fd);
 		g.generateConnectedGraphWithDensity(FIXED_DENSITY);
-		//primSeq(g.raw(), g.size());
+		primSeq(g.raw(), g.size());
 		prim_mst_hybrid(g,prim_gpu_fd[i]);
-		//boru_cpu((g,boru_cpu_fd[i]);
-		//boruvka(g,boru_gpu_fd[i]);
+		//boru_cpu(g,boru_cpu_fd[i]);
+		boruvka(g,boru_gpu_fd[i]);
 		V_fd+=V_STEP;
 		
 		printf("prim_cpu finished at %dms\n", prim_cpu_fd[i]);
 		printf("prim_gpu finished at %dms\n", prim_gpu_fd[i]);
-		printf("boru_cpu finished at %dms\n", boru_cpu_fd[i]);
+		//printf("boru_cpu finished at %dms\n", boru_cpu_fd[i]);
 		printf("boru_gpu finished at %dms\n", boru_gpu_fd[i]);
 	}
 	printf("\n\n");	
@@ -107,14 +111,14 @@ int main() {
 		g.generateConnectedGraphWithDensity(density_fv);
 		//primSeq(g.raw(),prim_cpu_fv[i]);
 		prim_mst_hybrid(g,prim_gpu_fv[i]);
-		//boru_cpu((g,boru_cpu_fv[i]);
-		//boruvka(g,boru_gpu_fv[i]);
+		//boru_cpu(g,boru_cpu_fv[i]);
+		boruvka(g,boru_gpu_fv[i]);
 		density_fv+=DENSITY_STEP;
 		
-		printf("prim_gpu finished at %dms\n", prim_cpu_fv[i]);
+		//printf("prim_cpu finished at %dms\n", prim_cpu_fv[i]);
 		printf("prim_gpu finished at %dms\n", prim_gpu_fv[i]);
-		printf("prim_gpu finished at %dms\n", boru_cpu_fv[i]);
-		printf("prim_gpu finished at %dms\n", boru_gpu_fv[i]);
+		//printf("boru_cpu finished at %dms\n", boru_cpu_fv[i]);
+		printf("boru_gpu finished at %dms\n", boru_gpu_fv[i]);
 	}
 
 }
